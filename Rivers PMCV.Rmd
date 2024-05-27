@@ -1,0 +1,4949 @@
+---
+title: <span style="color:#fe6e87;">Deworm the World Initiative-<br> Rivers State, Nigeria</span>
+output: 
+    html_document:
+      toc: yes
+      toc_depth: 4
+      toc_float:
+        collapsed: no
+        smooth_scroll: no
+runtime: shiny
+---
+
+
+*A Process Monitoring and Coverage Validation report from year 6 of School-<br>Based Deworming implementation in Rivers State, Nigeria*
+
+<span style="background-color:#fe6e87; color:white; display: inline-block; text-align: center; width: 100%;">*May and November, 2022*</span>
+
+
+**Prepared by:** 	Evidence Action
+
+**For:**                    	GiveWell and partners, Nigerian Ministries of Health and Education
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+```{r importing packages}
+library(shiny)
+library(knitr)
+library(ggplot2)
+library(dplyr)
+library(kableExtra)
+library(RPostgreSQL)
+library(DBI)
+library(tinytex)
+```
+
+
+```{r database_connection, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+# import packages
+library(RPostgreSQL)
+library(shiny)
+library(shinyjs)
+
+# Database connection details
+db_user <- "sylviagitau"
+db_password <- "5y1Vi4.8|7@u"
+db_host <- "pilot.cnltbg2tkrfl.eu-central-1.rds.amazonaws.com"
+db_port <- 5432
+db_name <- "nigeria_pmcv"
+
+# Establish a database connection
+con <- dbConnect(
+  PostgreSQL(),
+  user = db_user,
+  password = db_password,
+  host = db_host,
+  port = db_port,
+  dbname = db_name
+)
+
+# Close the database connection
+# dbDisconnect(con)
+```
+
+# <span style="color:#fe6e87;">Glossary</span>
+
+```{r glossary}
+library(kableExtra)
+
+# Define your glossary or abbreviations
+glossary <- data.frame(
+  Abbreviation = c("**FLHF**  ", "**IEC**  ", "**LGA**  ", "**MDA**  ", "**PPE**  ", "**PPES**  ", "**SAE**  ", "**SBDP**  ", "**STH**  ", "**WHO**  "),
+  Definition = c("Frontline Health Facility", "Information, Education and Communication",
+                 "Local Government Area", "Mass Drug Administration",
+                 "Personal Protective Equipment", "Probability Proportionate to Estimated Size",
+                 "Severe Adverse Events", "School-Based Deworming Program",
+                 "Soil-Transmitted Helminths", "World Health Organization")
+)
+
+# Print the glossary table with space between rows
+kable(glossary, col.names = NULL) %>%
+  kable_styling() %>%
+  row_spec(1:nrow(glossary), extra_css = "margin-bottom: 10px;")
+```
+
+
+# <span style="color:#fe6e87;">1.0 Executive Summary</span>
+
+
+This report summarizes the results of two rounds of process monitoring during the May and November 2022 deworming rounds and one coverage validation (PMCV)  exercise following the first round of deworming in Rivers State, Nigeria. As a technical assistance partner to the Government of Rivers State, Evidence Action supports PMCV to determine what worked well and identify existing challenges within the implementation process and assess the accuracy of the reported government treatment data in select local government authorities (LGAs).
+ In 2022, Rivers carried out its sixth year of school-based deworming targeting both enrolled  and non-enrolled school-age children (SAC), 5-14 years. 
+In total, 1.88 million  SAC were targeted for deworming treatments across 21 endemic LGAs for soil-transmitted helminths (STH) and 1.64 million SAC were treated (87% government reported treatment coverage). 
+
+##### **Coverage Validation Findings**
+
+Coverage validation (CV) surveys were conducted within 6 weeks of round one MDA treatment within two randomly selected LGAs – Emohua and Opobo/Nkoro to evaluate the program reach and surveyed coverage. The findings indicate that 84% of SAC in Emohua and 92% in Opobo/Nkoro were offered the chance to swallow the drug (program reach), with 83% of SAC in Emohua and 91% in Opobo/Nkoro ingesting the drug (surveyed coverage).
+While CV was only conducted in two LGAs, and therefore not representative of the entire state, surveyed coverage for the two LGAs was above the WHO’s recommended 75% therapeutic coverage threshold for STH, indicating that these geographic units are on track to achieving disease control. 
+When comparing surveyed coverage to government-reported coverage, reported coverage for Emohua LGA was within the 95% confidence interval of the surveyed coverage. This suggests that the reporting system is working well. The reported coverage for Opobo/Nkoro LGA was outside the 95% confidence interval of the surveyed coverage. This suggests that the reporting system in this LGA is not working well. Read more on coverage validation on page 25
+
+##### **Process Monitoring Findings**
+
+```{r process monitoring, echo = FALSE}
+
+sql_query <- "SELECT variable, value, Round, attibutes
+FROM tt_obs
+WHERE Round = 'Overall'
+AND year = 2022
+AND state = 'Rivers'
+AND variable IN ('School attendance Rate', 'Overall coverage of information on community sensitization')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+
+value_percent <- data$value[data$variable == 'School attendance Rate'] * 100
+
+value_percent2 <- data$value[data$variable == 'Overall coverage of information on community sensitization' & data$attibutes == 'Covered Partially'] * 100
+
+renderText(sprintf(
+  "● The program saw an increase in training attendance as compared to the previous year. %.0f%% of expected school representatives attended teacher training, a 12-percentage point increase from the previous year. All seven training topics were covered in at least %.0f%% of the monitored training sessions, with health education, drug administration, target population, and reporting and recording forms covered in 100%% of training sessions. Read more on training starting on page 8.",
+  value_percent,
+  value_percent2
+))
+```
+
+
+
+```{r part3, echo=FALSE}
+
+sql_query <- "SELECT variable, value, Round, attibutes
+              FROM ttci_prepost
+              WHERE Round = 'Overall'
+              AND year = 2022
+              AND state = 'Rivers'
+              AND (variable = '% teachers who received all key materials for for DD (Treatment forms and Mebendazole tablets)'
+                   OR (variable = 'What materials did you receive during the training for conducting deworming?'
+                       AND attibutes  IN ( 'Deworming medicine' , 'Treatment Data Forms')))"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+
+value_percent <- data$value[data$variable == '% teachers who received all key materials for for DD (Treatment forms and Mebendazole tablets)'] * 100
+value_percent2 <- data$value[data$variable == 'What materials did you receive during the training for conducting deworming?' & data$attibutes == 'Deworming medicine'] * 100
+value_percent3 <- data$value[data$variable == 'What materials did you receive during the training for conducting deworming?' & data$attibutes == 'Treatment Data Forms'] * 100
+# Calculate the number of rows
+n_rows <- nrow(data)
+
+
+# Use the dynamic values in the output text
+  renderText(sprintf(
+    "● Following teacher training, %.0f%% of the monitored training sessions distributed all key materials (%.0f%% distributed drugs and %.0f%% distributed reporting forms) to teachers to take to their respective schools for deworming day. Direct observation at schools during the deworming week and follow-up interviews with the head teachers after the process of drug administration at the schools revealed that %.0f%% of schools had sufficient drugs to deworm all children present. Read more on drug and material distribution on page 17.",
+    value_percent,
+    value_percent2,
+    value_percent3,
+    n_rows  # Add the number of rows as a placeholder argument
+  ))
+```
+
+
+```{r part4, echo=FALSE}
+
+sql_query <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND (
+    variable = 'Proportion of parents who were aware of deworming activity at school'
+    AND attributes IS NULL
+    OR (
+        variable = 'Is child enrolled in school?'
+        OR (
+            variable = 'Why will/did your children NOT get deworming medicine today?'
+            AND (attributes = 'Not aware of the deworming' OR attributes = 'Child is not enrolled')
+        )
+        OR (
+            variable = 'ASK: How did you hear about the deworming exercise to be conducted in your community?'
+            AND (attributes = 'My child told me' OR attributes = 'Teacher from a local school')
+        )
+    )
+)"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+value_percent <- data$value[data$variable == 'Proportion of parents who were aware of deworming activity at school' & is.na(data$attributes)] * 100
+value_percent2 <- data$value[data$variable == 'Is child enrolled in school?'] * 100
+value_percent3 <- data$value[data$variable == 'Why will/did your children NOT get deworming medicine today?' & data$attributes == 'Not aware of the deworming'] * 100
+value_percent4 <- data$value[data$variable == 'Why will/did your children NOT get deworming medicine today?' & data$attributes == 'Child is not enrolled'] * 100
+value_percent5 <- data$value[data$variable == 'ASK: How did you hear about the deworming exercise to be conducted in your community?' & data$attributes == 'My child told me'] * 100
+value_percent6 <- data$value[data$variable == 'ASK: How did you hear about the deworming exercise to be conducted in your community?' & data$attributes == 'Teacher from a local school'] * 100
+
+# Calculate the number of rows
+n_rows <- nrow(data)
+
+# output text
+output_text2 <- sprintf(
+  "● %.0f%% of parents were aware of deworming day, with this proportion higher among parents of enrolled children (%.0f%%) as compared to the parents of non-enrolled children (43%%). Seventy-six percent (76%%) of parents, a 2-percentage point decrease from the previous year, who were aware of deworming day, indicated that they would be sending their children for deworming. The main reasons cited for parents not sending children for deworming were lack of awareness (%.0f%%) and lack of school enrollment (%.0f%%). The primary sources of deworming day information cited by parents were children (%.0f%%), followed by teachers (%.0f%%). Read more about community sensitization on page 18.",
+  value_percent,
+  value_percent2,
+  value_percent3,
+  value_percent4,
+  value_percent5,
+  value_percent6,
+  n_rows
+)
+
+renderText(output_text2)
+```
+
+
+```{r part5, echo=FALSE}
+
+sql_query <- "SELECT * FROM dd_main
+WHERE variable IN ('DD protocols', 'Tabs and dosage protocol')
+AND year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND attributes IN ('Trnsferred names prior', 'Treatment register used', 'Children chewed MEB')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+
+value_percent <- data$value[data$variable == 'Tabs and dosage protocol' & data$attributes == 'Children chewed MEB'] * 100
+value_percent2 <- data$value[data$variable == 'DD protocols' & data$attributes == 'Treatment register used'] * 100
+value_percent3 <- data$value[data$variable == 'DD protocols' & data$attributes == 'Trnsferred names prior'] * 100
+
+# Calculate the number of rows
+n_rows <- nrow(data)
+
+# Use the dynamic values in the output text
+  output_text3 <- sprintf(
+    "●	In both rounds 1 and 2, the program saw an increase in the number of schools distributing mebendazole tablets on deworming day; 87%% of expected schools distributed tablets which is a 27-percentage point increase from the previous year. Teachers administered the correct dosage of mebendazole at %.0f%% of schools, and %.0f%% of schools utilized the treatment register. %.0f%% of teachers transferred names from the class register to the treatment register before deworming. Read more on drug administration on page 23.",
+    value_percent,
+    value_percent2,
+    value_percent3,
+    n_rows
+  )
+  
+renderText(output_text3)
+```
+
+
+
+<u>**Coverage Validation Findings**</u>
+
+Coverage validation (CV) surveys were conducted within 6 weeks of round one MDA treatment within two randomly selected LGAs – Emohua and Opobo/Nkoro to evaluate the program reach and surveyed coverage. The findings indicate **that 84% of SAC in Emohua and 92% in Opobo/Nkoro were offered the chance to swallow the drug (program reach), with 83% of SAC in Emohua and 91% in Opobo/Nkoro ingesting the drug (surveyed coverage).**
+
+While CV was only conducted in two LGAs, and therefore not representative of the entire state, **surveyed coverage for the two LGAs was above the WHO’s recommended 75% therapeutic coverage threshold for STH, indicating that these geographic units are on track to achieving disease control.**
+
+When comparing surveyed coverage to government-reported coverage, **reported coverage for Emohua LGA was within the 95% confidence interval of the surveyed coverage. This suggests that the reporting system is working well. The reported coverage for Opobo/Nkoro LGA was outside the 95% confidence interval of the surveyed coverage. This suggests that the reporting system in this LGA is not working well.** Read more on coverage validation on page 25.  
+
+Table 1 below provides the round-wise breakdown of Process Monitoring and Coverage Validation results against key indicators.
+
+##### **Table 1: Key Performance Indicators**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.custom-table td,
+.custom-table th {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+
+.custom-table .bold-row th {
+  font-weight: bold;
+}
+
+.custom-table .border-left th,
+.custom-table .border-left td {
+  border-left: 1px solid #000;
+}
+
+.custom-table .border-right th,
+.custom-table .border-right td {
+  border-right: 1px solid #000;
+}
+
+/* Define custom background color for specific rows */
+.custom-table .process-monitoring,
+.custom-table .coverage-validation {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Your Table -->
+<div class="custom-table">
+  <table style="empty-cells: show;">
+    <tr class="process-monitoring">
+      <td>Process Monitoring</td>
+      <td>Year 6, Round 1</td>
+      <td>Year 6, Round 2</td>
+      <td>Overall</td>
+    </tr>
+    <tr>
+      <td>Target schools represented at teacher training</td>
+      ```{r school_attendance, results='asis'}
+      query_school_attendance <- "SELECT round, value FROM tt_obs
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND variable = 'School attendance Rate'
+                                  AND Round IN ('Round 1', 'Round 2', 'Overall')"
+      school_attendance_data <- dbGetQuery(con, query_school_attendance)
+      
+      rounds <- c('Round 1', 'Round 2', 'Overall')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(school_attendance_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(school_attendance_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+    </tr>
+    <tr>
+      <td>Target schools with adequate drugs during deworming</td>
+      ```{r adequate-drugs, results='asis'}
+      query_adequate_drugs <- "SELECT round, value FROM dd_main
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND attributes = 'Yes'
+                                  AND variable = 'ASK:Were deworming medicines sufficient for today?'
+                                  AND Round IN ('Round 1', 'Round 2', 'Overall')"
+      adequate_drugs_data <- dbGetQuery(con, query_adequate_drugs)
+      
+      rounds <- c('Round 1', 'Round 2', 'Overall')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(adequate_drugs_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(adequate_drugs_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+    </tr>
+    <tr>
+    <td>Target school utilizing at least one awareness activity or material</td>
+      ```{r awareness-activity, results='asis'}
+      query_awareness_activity <- "SELECT round, SUM(value) AS total_sum FROM dd_main
+                                  WHERE year = 2023
+                                  AND state = 'Rivers'
+                                  AND variable = '<b>DO NOT READ THIS ALOUD: </b> Check the placement of the posters and record the most appropriate answer.'
+                                  AND attributes IN ('Clearly posted/visible to all', 'Hidden in a room/partially visible')
+                                  AND Round IN ('Round 1', 'Round 2', 'Overall')
+                                  GROUP BY Round
+                                  ORDER BY CASE
+                                  WHEN Round = 'Round 1' THEN 1
+                                  WHEN Round = 'Round 2' THEN 2
+                                  ELSE 3
+                                END"
+      awareness_activity_data <- dbGetQuery(con, query_awareness_activity)
+      
+      rounds <- c('Round 1', 'Round 2', 'Overall')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(awareness_activity_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(awareness_activity_data$total_sum[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      </tr>
+   <tr>
+    <td>Community members who report seeing or hearing about deworming through IEC deworming materials or word of mouth this year</td>
+      ```{r hearing-deworming, results='asis'}
+      query_hearing_deworming <- "SELECT round, value FROM cms
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND variable = 'Proportion of parents who were aware of deworming activity at school'
+                                  AND attributes IS NULL
+                                  AND Round IN ('Round 1', 'Round 2', 'Overall')"
+      hearing_deworming_data <- dbGetQuery(con, query_hearing_deworming)
+      
+      rounds <- c('Round 1', 'Round 2', 'Overall')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(hearing_deworming_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(hearing_deworming_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      </tr>
+    <tr>
+      <td>Target schools distributing tablets on deworming day</td>
+      <td>100%</td>
+      <td>87%</td>
+      <td>87%</td>
+    </tr>
+    <tr>
+      <td>Enrolled children present in school on deworming day</td>
+      ```{r enrolled-children, results='asis'}
+      query_enrolled_children <- "SELECT round, value FROM dd_main
+                                  WHERE year = 2023
+                                  AND state = 'Rivers'
+                                  AND variable = 'Proportion of students who were present on DD'
+                                  AND Round IN ('Round 1', 'Round 2', 'Overall')"
+      enrolled_children_data <- dbGetQuery(con, query_enrolled_children)
+      
+      rounds <- c('Round 1', 'Round 2', 'Overall')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(enrolled_children_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(enrolled_children_data$value[index]), " ")
+        } else {
+          cat("N/A")
+        }
+        cat("</td>")
+      }
+      ```
+    </tr>
+    <tr>
+      <tr class="coverage-validation">
+      <td>Coverage Validation</td>
+      <td>Year 6, Round 1</td>
+      <td>Year 6, Round 2</td>
+      <td>Overall</td>
+    </tr>
+    <tr>
+      <td>Targeted children who report receiving unprogrammed deworming in the last six months</td>
+      <td>21%</td>
+      <td>N/A<sup>4</sup></td>
+      <td>21%</td>
+    </tr>
+    <tr>
+      <td>Target population validated as swallowing deworming tablets on deworming day based on Coverage Validation</td>
+      <td>86%</td>
+      <td>N/A</td>
+      <td>86%</td>
+    </tr>
+  </table>
+</div>
+
+
+##### **Table 2: Coverage Validation Survey Results**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.custom-table td,
+.custom-table th {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+
+.custom-table .bold-row th {
+  font-weight: bold;
+}
+
+.custom-table .border-left th,
+.custom-table .border-left td {
+  border-left: 1px solid #000;
+}
+
+.custom-table .border-right th,
+.custom-table .border-right td {
+  border-right: 1px solid #000;
+}
+</style>
+
+<!-- Your Table -->
+<div class="custom-table">
+  <table>
+    <tr>
+      <th colspan="1">LGA</th>
+      <th colspan="3">Program Reach</th>
+      <th colspan="3">Surveyed Coverage</th>
+      <th colspan="1">Reported Coverage</th>
+      <th colspan="1">Denominator</th>
+    </tr>
+    <tr class="bold-row">
+      <td></td>
+      <td>Mean (%)</td>
+      <td>% Lower bound CI</td>
+      <td>% Upper bound CI</td>
+      <td>Mean (%)</td>
+      <td>% Lower bound CI</td>
+      <td>% Upper bound CI</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Emohua</td>
+      ```{r program_reach, results='asis'}
+      query_program_reach <- "SELECT mean,lower_bound,upper_bound
+                              FROM program_reach
+                              WHERE LGA = 'Emohua'"
+                          
+      program_reach_data <- dbGetQuery(con, query_program_reach)
+      
+for (col_name in names(program_reach_data)) {
+    cat("<td>")
+    if (any(is.na(program_reach_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(program_reach_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      ```{r survey_coverage, results='asis'}
+      query_survey_coverage <- "SELECT mean,lower_bound,upper_bound
+                              FROM survey_coverage
+                              WHERE LGA = 'Emohua'"
+                          
+      survey_coverage_data <- dbGetQuery(con, query_survey_coverage)
+      
+for (col_name in names(survey_coverage_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(survey_coverage_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      <td>86%</td>
+      ```{r survey_coverage_N, results='asis'}
+      query_survey_coverage_N <- "SELECT alb_n
+                              FROM survey_coverage
+                              WHERE LGA = 'Emohua'"
+                          
+      survey_coverage_N_data <- dbGetQuery(con, query_survey_coverage_N)
+      
+for (col_name in names(survey_coverage_N_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_N_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat((survey_coverage_N_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+    </tr>
+    <tr>
+      <td>Opobo / Nkoro</td>
+      ```{r program_reach_o, results='asis'}
+      query_program_reach_o <- "SELECT mean,lower_bound,upper_bound
+                              FROM program_reach
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      program_reach_o_data <- dbGetQuery(con, query_program_reach_o)
+      
+for (col_name in names(program_reach_o_data)) {
+    cat("<td>")
+    if (any(is.na(program_reach_o_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(program_reach_o_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      ```{r survey_coverage_o, results='asis'}
+      query_survey_coverage_o <- "SELECT mean,lower_bound,upper_bound
+                              FROM survey_coverage
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      survey_coverage_o_data <- dbGetQuery(con, query_survey_coverage_o)
+      
+for (col_name in names(survey_coverage_o_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_o_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(survey_coverage_o_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      <td>86%</td>
+      ```{r survey_coverage_o_N, results='asis'}
+      query_survey_coverage_o_N <- "SELECT alb_n
+                              FROM survey_coverage
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      survey_coverage_o_N_data <- dbGetQuery(con, query_survey_coverage_o_N)
+      
+for (col_name in names(survey_coverage_o_N_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_o_N_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat((survey_coverage_o_N_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+    </tr>
+  </table>
+</div>
+
+
+Overall, Y6 implementation was successful, with several KPIs improving since the previous round. Improvements in school attendance resulted in a 20 percentage point increase from 56% in year 5. On deworming week, material distribution was also commendable, with all (100%) and 75% of schools having deworming medicine and monitoring forms,  respectively. Community awareness of deworming through IEC deworming materials or word of mouth was at 73% among parents. During deworming week, the number of schools distributing mebendazole tablets increased; 87% of expected schools distributed tablets, a 27 percentage point increase from the previous year. Further details on priorities for program improvement and ways forward can be found on page 28.
+
+# <span style="color:#fe6e87;">2.0 Background</span>
+
+In total, 1.88 million  SAC were targeted for deworming treatments across 21 endemic LGAs for soil-transmitted helminths (STH) and 1.64 million SAC were treated (87% government reported treatment coverage).
+
+Approximately 9760 teachers were trained to properly administer deworming drugs.
+
+Evidence Action recruited an independent firm, Infotrak Research, and Consulting, to monitor random samples of program activities to assess the quality of implementation, adherence to protocol, and supply chain effectiveness. During the year, monitors observed 14 LGA trainings, 47 teacher trainings, and 60 schools on deworming day, and interviewed 168 parents in the community. Evidence Action designed data collection tools and sampling methods, and cleaned and analyzed the data from the above activities. The findings are presented in this report.
+
+
+# <span style="color:#fe6e87;">3.0 Methodology</span>
+
+## <span style="color:#fe6e87;">3.1 Process Monitoring</span>
+
+To assess the quality of teacher training and the implementation of deworming, Evidence Action randomly selected 48 of approximately 339 total teacher training sessions for observation and training assessment, and 60 of about 5,410 total schools for observation and interviews of teachers, children, and parents by independent monitors on deworming day. Seventy percent (73% in round one and 67% in round two) of schools observed were primary level, 17% (17% in each round) were junior secondary level, 10% (10% in each round) included both levels, and 3% (0% in round one and 7% in round two)were nursery and primary level. By school type, 58% (63% in round one and 53% in round two) were public and 42% (37% in round one and 47% in round two) were private. 
+
+Monitors observed sampled teacher training sessions and interviewed trainers. Before the start of these sessions, four participants were targeted for pre-training interviews and four participants for post-training interviews. The participants were systematically sampled so that every third participant to arrive at the venue was interviewed pre-training, and every third participant to receive training materials was selected for a post-interview.
+
+On deworming day, monitors interviewed head teachers and teachers from sampled schools regarding their plans for deworming, their treatment knowledge, and any sensitization activities they had carried out in schools and local communities. Monitors then observed the drug administration process to verify that the required deworming procedures were followed. After treatment, monitors randomly selected and interviewed two enrolled children and one  non-enrolled child. Parents residing in areas around the selected schools were interviewed on deworming day to gauge their level of awareness of the program. At each of the 60 visited communities, monitors targeted 3 parents (a total of 180 parents) for such interviews -- 2 parents of children enrolled in school and 1 parent of children not enrolled in school (in total, 119 parents of enrolled children and 49 parents of non-enrolled children were found for interview). A timeline for the cascade of activities is shown in - Figure 1 below.
+
+##### **Figure 1: Timeline of events cascade**
+
+![](https://i.postimg.cc/W16JhSdk/figure-1.jpg)
+
+## <span style="color:#fe6e87;">3.2 Coverage Validation</span>
+
+A few weeks after the round one MDA, monitors conducted coverage validation to determine the program reach and surveyed coverage, per WHO guidelines while surveying schools and communities. A total of 2,372 children were interviewed from the two LGAs using a two-stage probability proportional to estimated size (PPES) sampling design.
+
+##### **Table 3: Process monitoring and coverage validation targeted and actual sample sizes**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th>Monitoring activity</th>
+      <th>Target sample size</th>
+      <th>Actual sample size</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="4" class="left-align"><strong>**LGA and teacher training**</strong></td>
+    </tr>
+  <tr>
+  <td>LGA training sessions</td>
+  <td>14</td>
+  <td>14</td>
+    </tr>
+  <tr>
+  <td>Pre-training LGA interviews</td>
+  <td>56</td>
+  ```{r pre_training_lga, results='asis'}
+      query_pre_training_lga <- "SELECT * FROM lga_prepost
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND sourcefile = 'PRE'
+                                  AND variable = 'Sample size';"
+                          
+      pre_training_lga_data <- dbGetQuery(con, query_pre_training_lga)
+      
+      if (nrow(pre_training_lga_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(pre_training_lga_data)) {
+    cat("<td>")
+    if (!is.na(pre_training_lga_data$attibutes[i])) {
+      cat(pre_training_lga_data$attibutes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+    <tr>
+  <td>Post-training LGA interviews</td>
+  <td>56</td>
+  ```{r post_training_lga, results='asis'}
+      query_post_training_lga <- "SELECT * FROM lga_prepost
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND sourcefile = 'POST'
+                                  AND variable = 'Sample size';"
+                          
+      post_training_lga_data <- dbGetQuery(con, query_post_training_lga)
+      
+      if (nrow(post_training_lga_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(post_training_lga_data)) {
+    cat("<td>")
+    if (!is.na(post_training_lga_data$attibutes[i])) {
+      cat(post_training_lga_data$attibutes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Teacher training sessions</td>
+  <td>48</td>
+  ```{r tt_training, results='asis'}
+      query_tt_training <- "SELECT * FROM tt_obs
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample size';"
+                          
+      tt_training_data <- dbGetQuery(con, query_tt_training)
+      
+      if (nrow(tt_training_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(tt_training_data)) {
+    cat("<td>")
+    if (!is.na(tt_training_data$attibutes[i])) {
+      cat(tt_training_data$attibutes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Pre-training teacher interviews</td>
+  <td>192</td>
+  ```{r pre_training_tt, results='asis'}
+      query_pre_training_tt <- "SELECT * FROM ttci_prepost
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND sourcefile = 'PRE'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample size'"
+                          
+      pre_training_tt_data <- dbGetQuery(con, query_pre_training_tt)
+      
+      if (nrow(pre_training_tt_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(pre_training_tt_data)) {
+    cat("<td>")
+    if (!is.na(pre_training_tt_data$attibutes[i])) {
+      cat(pre_training_tt_data$attibutes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Post-training teacher interviews</td>
+  <td>192</td>
+  ```{r post_training_tt, results='asis'}
+      query_post_training_tt <- "SELECT * FROM ttci_prepost
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND sourcefile = 'PRE'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample size'"
+                          
+      post_training_tt_data <- dbGetQuery(con, query_post_training_tt)
+      
+      if (nrow(post_training_tt_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(post_training_tt_data)) {
+    cat("<td>")
+    if (!is.na(post_training_tt_data$attibutes[i])) {
+      cat(post_training_tt_data$attibutes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Post-training LGA FLHF staff interviews</td>
+  <td>42</td>
+  <td>25<sup>8</sup></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="left-align"><strong>**Deworming day interviews**</strong></td>
+      </tr>
+      <tr>
+  <td>Schools targeted for monitoring on deworming day</td>
+  <td>60</td>
+  ```{r schools_targeted, results='asis'}
+      query_schools_targeted <- "SELECT * FROM dd_main
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample Size'"
+                          
+      schools_targeted_data <- dbGetQuery(con, query_schools_targeted)
+      
+      if (nrow(schools_targeted_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(schools_targeted_data)) {
+    cat("<td>")
+    if (!is.na(schools_targeted_data$attributes[i])) {
+      cat(schools_targeted_data$attributes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Parents of non-enrolled children interviewed on deworming day</td>
+  <td>60</td>
+  <td>49<sup>9</sup></td>
+  </tr>
+  <tr>
+  <td>Parents of enrolled children interviewed on deworming day</td>
+  <td>120</td>
+  <td>119</td>
+  </tr>
+    <tr>
+  <td>Enrolled children interviewed</td>
+  <td>120</td>
+  <td>118</td>
+  </tr>
+  <tr>
+  <td>Head teachers interviewed</td>
+  <td>60</td>
+  ```{r head_teachers, results='asis'}
+      query_head_teachers <- "SELECT * FROM dd_main
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample Size'"
+                          
+      head_teachers_data <- dbGetQuery(con, query_head_teachers)
+      
+      if (nrow(head_teachers_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(head_teachers_data)) {
+    cat("<td>")
+    if (!is.na(head_teachers_data$attributes[i])) {
+      cat(head_teachers_data$attributes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>Teachers interviewed</td>
+  <td>60</td>
+  ```{r teacher_interviewed, results='asis'}
+      query_teacher_interviewed <- "SELECT * FROM dd_main
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND round = 'Overall'
+                                  AND variable = 'Sample Size'"
+                          
+      teacher_interviewed_data <- dbGetQuery(con, query_teacher_interviewed)
+      
+      if (nrow(teacher_interviewed_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(teacher_interviewed_data)) {
+    cat("<td>")
+    if (!is.na(teacher_interviewed_data$attributes[i])) {
+      cat(teacher_interviewed_data$attributes[i])
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+  </tr>
+  <tr>
+  <td>FLHF staff interviewed</td>
+  <td>60</td>
+  <td>28<sup>10</sup></td>
+  </tr>
+  <tr>
+      <td colspan="4" class="left-align"><strong>**Coverage validation**</strong></td>
+      </tr>
+      <tr>
+  <td>Number of children interviewed</td>
+  <td>2357</td>
+  <td>2372<sup>11</sup></td>
+  </tr>
+  </tbody>
+</table>
+
+# <span style="color:#fe6e87;">4.0 Process Monitoring Results</span>
+
+## <span style="color:#fe6e87;">4.1 Training Results</span>
+
+```{r training-results, echo=FALSE}
+
+sql_query_lga <- "SELECT attibutes, variable, Round
+FROM lga_obs
+WHERE Round = 'Overall'
+AND year = 2022
+AND state = 'Rivers'
+AND variable = 'Sample size'"
+
+sql_query_tt <- "SELECT attibutes, variable, Round
+FROM tt_obs
+WHERE Round = 'Overall'
+AND year = 2022
+AND state = 'Rivers'
+AND variable = 'Sample size'"
+
+data_lga <- dbGetQuery(con, sql_query_lga)
+data_tt <- dbGetQuery(con, sql_query_tt)
+
+# Calculate the percentage and display the text
+
+value_percent_lga <- data_lga$attibutes[data_lga$variable == 'Sample size']
+value_percent_tt <- data_tt$attibutes[data_tt$variable == 'Sample size']
+
+renderText(sprintf(
+  "Monitors observed a sample of %s LGA level trainings and %s teacher trainings (TT) to measure the delivery and effectiveness of training sessions. Before the start of the training sessions, the monitors held interviews with the trainers to gauge their preparedness and deworming knowledge. To share information and keep participants engaged, trainers are encouraged to use a combination of teaching methods, as described in - Figure 2.",
+  value_percent_lga,
+  value_percent_tt
+))
+```
+
+
+##### **Figure 2: Training attendance, methods, and venue**
+
+```{r plot, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+
+# SQL query with a WHERE clause for the state of Rivers (LGA data)
+sql_query_lga <- "SELECT variable, value
+ FROM lga_obs 
+ WHERE state = 'Rivers'
+ AND round = 'Overall'
+ AND year = 2022
+ AND (variable = 'Attendance rate at the start' OR variable = 'Day 1 overall attendance rate' OR  variable = 'Day 2 overall attendance rate')"
+
+data_lga <- dbGetQuery(con, sql_query_lga)
+
+# Mapping original variable names to desired names(lga)
+variable_mapping_lga <- c('Day 1 overall attendance rate' = 'Day 1 overall attendance rate(n=14)',
+                       'Day 2 overall attendance rate' = 'Day 2 overall attendance rate(n=8)',
+                       'Attendance rate at the start' = 'Day 1 timely attendance(n=14)')
+
+# Apply the mapping to the 'variable' column in data_lga
+data_lga$variable_mapped <- variable_mapping_lga[data_lga$variable]
+
+# SQL query with a WHERE clause for the state of Rivers (TT data)
+sql_query_tt <- "SELECT variable, value
+ FROM tt_obs 
+ WHERE year = 2022
+ AND round = 'Overall'
+ AND variable IN ('timely_attendance', 'School attendance Rate', 'Teachers attendance rate')"
+
+data_tt <- dbGetQuery(con, sql_query_tt)
+
+# Mapping original variable names to desired names(tt)
+variable_mapping_tt <- c('timely_attendance' = 'Timely attendance of teachers(n=47)',
+                       'School attendance Rate' = 'Overall school attendance(n=47)',
+                       'Teachers attendance rate' = 'Overall teacher attendance rate(n=47)')
+
+# Apply the mapping to the 'variable' column in data_tt
+data_tt$variable_mapped <- variable_mapping_tt[data_tt$variable]
+
+# SQL query with a WHERE clause for the state of Rivers (TT2 data)
+sql_query_tt2 <- "SELECT *
+FROM tt_obs
+WHERE year = 2022
+AND round = 'Overall'
+AND variable = 'Overall Training methods employed'
+AND attibutes != 'Group work'"
+
+data_tt2 <- dbGetQuery(con, sql_query_tt2)
+
+# Plotting for LGA Training Attendance data
+plot_lga <- ggplot(data_lga, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value)), hjust = -0.2, size = 3) +
+    labs(title = "LGA training attendance:", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank())  # Remove x-axis text
+
+# Plotting for TT Training Attendance data
+plot_tt <- ggplot(data_tt, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value)), hjust = -0.2, size = 3) +
+    labs(title = "Teacher training attendance:", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank())  # Remove x-axis text
+
+# Plotting for Teacher training methods data
+plot_tt2 <- ggplot(data_tt2, aes(x = attibutes, y = value, fill = variable)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value)), hjust = -0.2, size = 3) +
+    labs(title = "Teacher training methods (n=47):", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank())  # Remove x-axis text
+
+# Arrange plots vertically
+grid.arrange(plot_lga, plot_tt, plot_tt2, ncol = 1)
+
+```
+
+
+On average, 64% of expected schools had a representative in attendance at the monitored teacher training sessions, with 58% of teachers on-time - **Figure 2.**  During TT post-training interviews, 91% of attendees reported attending the entire training. An attendance register was noted across 93% of LGA trainings and all (100%) TTs were monitored - **Figure 3.**
+
+
+##### **Figure 3: Composition of trainers, trainees, and register availability in TTs**
+
+```{r figure3, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+# SQL query
+sql_query1 <- "SELECT * FROM tt_admin
+              WHERE year = 2022
+              AND round = 'Overall'
+              AND variable = 'Which ministries , boards, and/or agencies- are all the trainers for this training session from?'"
+
+data <- dbGetQuery(con, sql_query1)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Ministry Of Health(MoH)' = 'Ministry of Health (n=47)',
+                       'Ministry Of Education(MoE).' = 'Ministry of Education (n=47)')
+
+# Creating a new variable with the desired names
+data$variable_mapped <- variable_mapping[data$attibutes]
+
+# SQL query
+sql_query2 <- "SELECT 
+    tt.variable,
+    tt.attibutes,
+    CASE 
+        WHEN tt.attibutes IN ('Other:Facilitator', 'Other:N-power') 
+            THEN ot.total_sum
+        ELSE tt.value 
+    END AS total_value
+FROM ttci_prepost tt
+LEFT JOIN (
+    SELECT 
+        variable,
+        SUM(value) AS total_sum
+    FROM ttci_prepost
+    WHERE 
+        year = 2022
+        AND round = 'Overall'
+        AND sourcefile = 'POST'
+        AND variable = 'ASK THE RESPONDENT: What is your position?'
+        AND attibutes IN ('Other:Facilitator', 'Other:N-power')
+    GROUP BY variable
+) ot ON tt.variable = ot.variable
+WHERE 
+    tt.year = 2022
+    AND tt.round = 'Overall'
+    AND tt.sourcefile = 'POST'
+    AND tt.variable = 'ASK THE RESPONDENT: What is your position?'"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Head Teacher Representative' = 'Head teacher representatives',
+                       'Head Teacher' = 'Head teachers',
+                      'Health Teacher' = 'Health teachers',
+                      'Health Teacher Representative' = 'Health teacher representatives',
+                      'Other:Facilitator' = 'Others')
+
+# Creating a new variable with the desired names
+data2$variable_mapped <- variable_mapping[data2$attibutes]
+
+# SQL query
+sql_query3 <- "SELECT * FROM tt_admin
+               WHERE year = 2022
+               AND round = 'Overall'
+               AND variable = 'Can you show me the materials and deworming medicine to be distributed to teachers today?'
+               AND attibutes = 'Class treatment register'"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Class treatment register' = 'Availability of attendance register during teacher training')
+
+# Creating a new variable with the desired names
+data3$variable_mapped <- variable_mapping[data3$attibutes]
+
+# Plotting for trainer data
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = "Trainer composition:", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank()) +  # Remove x-axis text
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting for trainee data
+plot2 <- ggplot(data2, aes(x = variable_mapped, y = total_value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(total_value), y = total_value, group = variable_mapped), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = "Trainee composition (n=182):", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank()) +  # Remove x-axis text
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting for attendance_register data
+plot3 <- ggplot(data3, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = NULL, x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank()) + # Remove x-axis text
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Arrange plots vertically and align them on the left
+grid.arrange(plot, plot2, plot3, ncol = 1)
+```
+
+
+### <span style="color:#fe6e87;">Topic coverage</span>
+
+Seven topics were meant to be covered across the training sessions. The topic of community sensitization was covered in 94% of the training sessions, while at least 98% of the training sessions covered the other six topics. The topics of recording and reporting forms, health education, target population, and deworming medicine administration were covered in all (100%) training - **Figure 4.** 
+
+
+##### **Figure 4: Topic coverage (n=47)**
+
+
+```{r figure4, echo=FALSE}
+
+library(ggplot2)
+
+# SQL query to sum the values for 'Covered Completely' and 'Covered Partially'
+sql_query_sum <- "
+SELECT variable, 
+       SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) as covered_completely,
+       SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) as covered_partially
+FROM tt_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('Overall coverage of recording and reporting forms', 'STH coverage of information on health education- worms', 'Coverage of STH drug distribution', 'Overall coverage of roles and responsibilities', 'Coverage of information on side effects', 'Overall coverage of information on community sensitization')
+GROUP BY variable;
+"
+
+data_sum <- dbGetQuery(con, sql_query_sum)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Overall coverage of recording and reporting forms' = 'Recording and reporting forms',
+                       'STH coverage of information on health education- worms' = 'Health education',
+                       'Coverage of STH drug distribution' = 'Deworming medicine administration',
+                       'Coverage of information on side effects' = 'Side effects',
+                       'Overall coverage of information on community sensitization' = 'Community sensitization')
+
+# Creating a new variable with the desired names
+data_sum$variable_mapped <- variable_mapping[data_sum$variable]
+
+# Calculate the total for each variable
+data_sum$total <- rowSums(data_sum[, c("covered_completely", "covered_partially")])
+
+# Plotting the horizontal stacked bar chart with percentages
+ggplot(data_sum, aes(x = covered_completely + covered_partially, y = variable_mapped, fill = variable_mapped)) +
+  geom_bar(stat = "identity", position = "stack", color = "white", width = 0.7) +
+  geom_text(aes(label = sprintf("%.0f%%", total * 100)),
+            position = position_stack(vjust = 0.5),
+            color = "black", size = 2.5) +  # Adjusted font size
+  labs(title = NULL,
+       x = NULL,
+       y = NULL) +
+  scale_fill_manual(values = c("#FE6E87", "#FE6E87", "#FE6E87", "#FE6E87", "#FE6E87")) +
+  theme_minimal() +
+  theme(axis.text.y = element_text(hjust = 0),
+        axis.text.x = element_blank(),  # Remove x-axis text
+        plot.title = element_text(size = 14),
+        legend.position = "none")  # Remove the legend
+```
+
+
+ 
+#### <span style="color:#fe6e87;">Topic 1: Health Education</span>
+
+##### **Figure 5: Health education messages covered in trainings and participants’ pre- and post-training knowledge**
+
+```{r figure 5, echo=FALSE, fig.height=6, fig.width = 8}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+# SQL query to sum the values for 'Covered Completely' and 'Covered Partially'
+sql_query_sum <- "SELECT variable,
+       SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) as covered_completely,
+       SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) as covered_partially
+	FROM tt_obs   
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable IN ('Worms are transmitted by :', 'How was this section (STH PREVENTION) covered?', 'How was this section (STH MORBIDITY) covered?',
+				 'BENEFITS OF DEWORMING IN SCHOOLS')
+GROUP BY variable"
+
+data_sum <- dbGetQuery(con, sql_query_sum)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Worms are transmitted by :' = 'Transimission of worms',
+                       'BENEFITS OF DEWORMING IN SCHOOLS' = 'Purpose of school-based deworming',
+                       'How was this section (STH PREVENTION) covered?' = 'Prevention of worms',
+                       'How was this section (STH MORBIDITY) covered?' = 'Negative effect of worms')
+
+# Creating a new variable with the desired names
+data_sum$variable_mapped <- variable_mapping[data_sum$variable]
+
+# Calculate the total for each variable
+data_sum$total <- rowSums(data_sum[, c("covered_completely", "covered_partially")])
+
+# SQL query pre&post
+sql_query <- "SELECT * FROM ttci_prepost
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'How do children get infected with worms?'
+AND attibutes IN ('Walking Bare Feet', 'Swimming In Dirty Water', 'Lack Of Proper Hand Washing', 'Absence Of Latrine/Open Defeacation', 'Eating Unwashed Fruits And Vegetables', 'Eating Unwell Cooked/Infected Meat')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Plotting for healthEducation topics data
+plot <- ggplot(data_sum, aes(x = variable_mapped, y = total, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(total), y = total, group = variable_mapped), 
+              position = position_stack(vjust = 0.5), size = 3) +
+
+    labs(title = "Health education topics\ncompletely covered in trainings\n(n=47)", x = NULL, y = NULL) +
+
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank()) +  # Remove x-axis text
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting for tt_pre and tt_post knowledge on transmission
+plot2 <- ggplot(data, aes(x = sourcefile, y = value, fill = sourcefile)) +
+     geom_bar(stat = "identity", position = "dodge", color = "white") +
+     facet_wrap(~attibutes, scales = 'free_y', ncol = 1) +
+     labs(title = "Pre- and post-\nknowledge on transimission", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "bottom") +
+     geom_text(aes(label = scales::percent(value), group = attibutes),
+               position = position_dodge(width = 0.8),  
+               vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#D3D3D3"), name = NULL)+
+  guides(fill = guide_legend(override.aes = list(title = NULL))) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Print the plot
+ grid.arrange(plot, plot2, ncol = 2)
+```
+
+
+The coverage of the four health education messages and participants’ post-training recollection, is shown in - **Figure 5** above. Post-training interviews with participants revealed that 99% could name at least one way a person becomes infected with worms. Additionally, 70% of teachers shared health messages with children before deworming.
+
+#### <span style="color:#fe6e87;">Topic 2: Target Population</span>
+
+Proper identification of the target group is critical to meeting the program goal of treating all eligible at-risk persons. **Figure 6** below shows training coverage of the target population and knowledge during deworming day. It also displays training coverage of non-eligible persons, as well as pre- and post-training knowledge scores.
+
+##### **Figure 6: Information on target population and pre-post knowledge of treatment eligibility criteria**
+
+```{r figure6, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+# SQL query Non-eligible person covered
+sql_query <- "SELECT * FROM tt_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'According to the trainers, which children should not be treated under the program?'
+AND attibutes IN ('Any child sick on DD', 'Any child with an inherent health condition such as Sickle Cell disease, Epileps','Any child under 5 years')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Any child sick on DD' = 'Sick children',
+                      'Any child under 5 years' = 'Children under 5 years',
+                      'Any child with an inherent health condition such as Sickle Cell disease, Epileps' = 'Children with history of sicle cell disease, epilepsy etc.')
+
+# Creating a new variable with the desired names
+data$variable_mapped <- variable_mapping[data$attibutes]
+
+# Use reorder to arrange bars from smallest to highest
+data$variable_mapped <- reorder(data$variable_mapped, data$value)
+
+# SQL query Non-eligible person covered
+sql_query2 <- "SELECT * FROM ttci_prepost
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Which category of children should not be given deworming medicine on the deworming day?'
+AND attibutes IN ('Sick children', 'Children under any medication', 'Children with known allergy to deworming medicine', 'Children with history of seizures')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Plotting for Non-eligible persons data
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = "Non-eligible persons covered\nin trainings (n=47)", x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.x = element_blank()) + # Remove x-axis text
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting for Knowledge on non-eligible person data
+plot2 <- ggplot(data2, aes(x = sourcefile, y = value, fill = sourcefile)) +
+     geom_bar(stat = "identity", position = "dodge", color = "white") +
+     facet_wrap(~attibutes, scales = 'free_y', ncol = 1) +
+     labs(title = "Knowledge on non-eligible persons", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "bottom") +  
+     geom_text(aes(label = scales::percent(value), group = attibutes),
+               position = position_dodge(width = 0.8),  
+               vjust = 0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#D3D3D3"), name = NULL)+
+  guides(fill = guide_legend(override.aes = list(title = NULL)))+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+
+# display plot
+grid.arrange(plot, plot2, ncol = 2)
+```
+
+#### <span style="color:#fe6e87;">Topic 3: Roles and Responsibilities</span>
+
+The success of the MDA hinges on the proper identification of the contributions of various actors and the roles they play throughout the MDA. The sessions on the roles and responsibilities of teachers were covered in 98% of the monitored teacher training sessions. LGA training sessions emphasized the role of head teachers in discussing deworming day at school management meetings, PTA meetings, etc. (100%) - **Figure 7.**
+
+##### **Figure 7: Roles and responsibilities covered by trainers in LGA and teacher trainings**
+
+```{r figure 7, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query responsibilities of headteachers
+sql_query <- "SELECT * FROM lga_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round  = 'Overall'
+AND variable = 'According to the trainer, what is the responsibility of the Head Teacher?'
+AND attibutes NOT IN('Other:Attending the training and nominating teachers to attend')"
+
+data <- dbGetQuery(con, sql_query)
+
+# sql query responsibilities of teachers tt
+sql_query2 <- "SELECT * FROM tt_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'According to the trainers, what is the role of the teachers/CIs in the deworming program?'
+AND attibutes IN ('To organize drug administration in schools', 'To disseminate health education messages for children and parents during assembl','To mobilize non-enrolled school-aged children','To complete forms for registration and reporting')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('To organize drug administration in schools' = 'To organize administration of deworming medicine in schools',
+                       'To disseminate health education messages for children and parents during assembl' = 'To disseminate health education messages for children and parents during assembly and PTA meeting',
+                      'To mobilize non-enrolled school-aged children' = 'To mobilize non-enrolled school-aged children',
+                      'To complete forms for registration and reporting' = 'To complete forms for registration and reporting')
+
+# Creating a new variable with the desired names
+data2$variable_mapped <- variable_mapping[data2$attibutes]
+
+# sql query responsibilities of flhf staff
+sql_query3 <- "SELECT * FROM tt_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'According to the trainers, what is the role of the frontline health facility staff in the deworming program?'
+AND attibutes IN  ('To communicate the rationale of the intervention to community leaders',
+'To participate in community awareness creation for drug administration campaign', 'To manage side-effects', 'To manage, refer, and report children with severe adverse effects', 'To help with treating non-enrolled children')"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# Plotting for responsibilities of headteachers data
+plot <- ggplot(data, aes(x = reorder(attibutes,value), y = value, fill = attibutes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Responsibilities of head teachers\ncovered during LGA\ntraining (n=14)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 60))
+
+# Plotting for responsibilities of teachers data
+plot2 <- ggplot(data2, aes(x = reorder(variable_mapped,value), y = value, fill = variable_mapped)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Responsibilities of teachers\ncovered during teacher\ntraining (n=47)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 70))
+
+# Plotting for responsibilities of flhf staff data
+plot3 <- ggplot(data3, aes(x = reorder(attibutes,value), y = value, fill = attibutes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Responsibilities of FLHF staff\ncovered during teacher\ntraining (n=47)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 70))
+
+print(plot/plot2/plot3)
+```
+
+**Figure 8**, below, shows frontline health facility (FLHF) staff knowledge of their roles and responsibilities on deworming day.
+
+##### **Figure 8: Self-reported roles during deworming day**
+
+
+```{r figure8, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+# sql query to get data (self-reported roles during deworming day)
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'ASK: What are your responsibilities as a FLHF in the School-based Deworming Program?'
+AND attributes IN ('Community Sensitization', 'Support Teachers on SAE', 'Orient FLHF Staff on the SBDP', 'Other:Supervisor')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Support Teachers on SAE' = 'Support teachers on severe adverse events (SAE)',
+                      'Community Sensitization' = 'Community Sensitization',
+                      'Orient FLHF Staff on the SBDP' = 'Orient FLHF Staff on the school-based deworming program (SBDP)',
+                      'Other:Supervisor' = 'Supervision of schools')
+
+# Creating a new variable with the desired names
+data$variable_mapped <- variable_mapping[data$attributes]
+
+# Use reorder to arrange bars based on value
+data$variable_mapped <- reorder(data$variable_mapped, data$value)
+
+# Plotting
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "FLHF knowledge of roles during deworming day (n=28)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+print(plot)
+```
+
+
+#### <span style="color:#fe6e87;">Topic 4: Community Sensitization</span>
+
+Raising awareness of the MDA within the target geographic area and population is pivotal to the achievement of the target therapeutic coverage of at least 75% of the at-risk population. Ninety-three percent (93%) of LGA training and all (100%) teacher training sessions announced the date of deworming day/week during the training sessions, and all (100%) TT participants reported the correct date of deworming after training. Monitors noted that 94% of trainers covered how teachers and FLHF staff will conduct sensitization activities before the MDA during the sensitization and mobilization session of teacher training. Although 91% of trainers covered the responsibilities of teachers in community sensitization at the teacher training, fewer than 80% of the teachers could cite any of their specific responsibilities post-training - **Figure 9.**
+
+##### **Figure 9: Community sensitization topics covered by trainers and post-training knowledge**
+
+```{r figure9, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query to get data (messages covered under community sensitization)
+sql_query <- "SELECT * FROM tt_obs
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'According to the trainers, what is the responsibility of the teacher/CI in community sensitization and mobilization?'
+AND attibutes IN ('Conduct Health Education on assembly ground', 'Display Posters in the School', 'Discuss DD at School Management Meetings','Encourage Children to share DD Information with Parents')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Use reorder to arrange bars from smallest to highest
+data$attibutes <- reorder(data$attibutes, data$value)
+
+# sql query to get data (Post-knowledge on sensitization roles)
+sql_query2 <- "SELECT * FROM ttci_prepost
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'What are some of your responsibilities relating to community sensitization?'
+AND attibutes IN ('Display Posters', 'Conduct health education in classrooms', 'Reach out to non-enrolled children and invite for deworming Day in my school', 'Share Deworming message during School Management Meetings',                       
+'Announce deworming message in school assembly',
+'Training and sensitizing other teachers',
+'Encourage Children to share Deworming Day Information with Parents')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Use reorder to arrange bars from smallest to highest
+data2$attibutes <- reorder(data2$attibutes, data2$value)
+
+# Plotting 1
+plot <- ggplot(data, aes(x = attibutes, y = value, fill = attibutes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Messages covered under\ncommunity sensitization during\nteacher training (n=47)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting 2
+plot2 <- ggplot(data2, aes(x = attibutes, y = value, fill = attibutes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Post-knowledge on\nsensitization roles", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+print(plot|plot2)
+```
+
+#### <span style="color:#fe6e87;">Topic 5: Recording and Reporting Forms</span>
+
+During MDAs, teachers are required to fill out treatment registers at the class level while head teachers fill out the school summary forms at the school level. Hence, they should be trained comprehensively on how to fill them in. Trainers are also required to inform teachers that all forms post-MDA are to be returned to the FLHF. A high proportion of trainers (100%) highlighted the need to record treatment on both forms - treatment registers and school summary forms, and a high proportion of participants recalled this information post-training (at least 86%) and on deworming day (at least 80%) - **Figure 10.**
+
+##### **Figure 10: Messages shared about reporting forms and participants’ post-training knowledge**
+
+```{r figure10, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: What form will you or the designated teacher use to summarize school treatment?', 'Which recording and reporting forms are you responsible for?')
+AND attributes IN ('School summary form', 'Treatment register')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('School summary form' = 'School summary form by head teacher',
+                      'Treatment register' = 'Treatment register by the deworming team')
+
+# Creating a new variable with the desired names
+data$variable_mapped <- variable_mapping[data$attributes]
+
+# Use reorder to arrange bars based on value
+data$variable_mapped <- reorder(data$variable_mapped, data$value)
+
+# plotting
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="Head teacher and class teacher\nknowledge of forms to be\nfilled on deworming day (n=60)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+print(plot)
+
+```
+
+
+#### <span style="color:#fe6e87;">Topic 6: Drug Administration</span>
+
+The drug administration topic was covered in all (100%) LGA and teacher training sessions, and all sub-topics were covered in at least 77% of the teacher trainings monitored - **Table 4.**
+
+##### **Table 4: Messages on deworming medicine administration covered in trainings**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th>MDA practice</th>
+      <th>LGA training (n=14)</th>
+      <th>Teacher training (n=47)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>One mebendazole tablet to be given to each child</td>
+        ```{r one_meb, results='asis'}
+query_one_meb <- "SELECT year, state, round, variable,
+    'MEB' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'One Tablet Per Child For Mebendazole/Albendazole'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+one_meb_data <- dbGetQuery(con, query_one_meb)
+
+if (nrow(one_meb_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(one_meb_data)) {
+    cat("<td>")
+    if (!is.na(one_meb_data$total_sum[i])) {
+      cat(scales::percent(one_meb_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r one_meb2, results='asis'}
+query_one_meb2 <- "SELECT year, state, round, variable,
+    'MEB' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'One Tablet of Mebendazole/Albendazole Per Child For STH:'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+one_meb_data2 <- dbGetQuery(con, query_one_meb2)
+
+if (nrow(one_meb_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(one_meb_data2)) {
+    cat("<td>")
+    if (!is.na(one_meb_data2$total_sum[i])) {
+      cat(scales::percent(one_meb_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>STH drug is mebendazole</td>
+      ```{r drug_meb, results='asis'}
+query_drug_meb <- "SELECT year, state, round, variable,
+    'DRUG' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'The drug used for STH will be Mebendazole/Albendazole'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+drug_meb_data <- dbGetQuery(con, query_drug_meb)
+
+if (nrow(drug_meb_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(drug_meb_data)) {
+    cat("<td>")
+    if (!is.na(drug_meb_data$total_sum[i])) {
+      cat(scales::percent(drug_meb_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+       ```{r drug_meb2, results='asis'}
+query_drug_meb2 <- "SELECT year, state, round, variable,
+    'DRUG' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'The drug used for STH will be Mebendazole/Albendazole:'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+drug_meb_data2 <- dbGetQuery(con, query_drug_meb2)
+
+if (nrow(drug_meb_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(drug_meb_data2)) {
+    cat("<td>")
+    if (!is.na(drug_meb_data2$total_sum[i])) {
+      cat(scales::percent(drug_meb_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Register enrolled children before deworming day and non-enrolled children on deworming day, before treatment</td>
+       ```{r register_children, results='asis'}
+query_register_children <- "SELECT year, state, round, variable,
+    'REGISTER' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Names of all enrolled children need to be copied from the class register on to the treatment register before deworming day.'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+register_children_data <- dbGetQuery(con, query_register_children)
+
+if (nrow(register_children_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(register_children_data)) {
+    cat("<td>")
+    if (!is.na(register_children_data$total_sum[i])) {
+      cat(scales::percent(register_children_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r register_children2, results='asis'}
+query_register_children2 <- "SELECT year, state, round, variable,
+    'REGISTER' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'REGISTER CHILD'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+register_children_data2 <- dbGetQuery(con, query_register_children2)
+
+if (nrow(register_children_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(register_children_data2)) {
+    cat("<td>")
+    if (!is.na(register_children_data2$total_sum[i])) {
+      cat(scales::percent(register_children_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Complete class level summary form as the child is treated</td>
+      ```{r complete_form, results='asis'}
+query_complete_form <- "SELECT year, state, round, variable,
+    'COMPLETE' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Complete treatment register as child is treated.'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+complete_form_data <- dbGetQuery(con, query_complete_form)
+
+if (nrow(complete_form_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(complete_form_data)) {
+    cat("<td>")
+    if (!is.na(complete_form_data$total_sum[i])) {
+      cat(scales::percent(complete_form_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r complete_form2, results='asis'}
+query_complete_form2 <- "SELECT year, state, round, variable,
+    'COMPLETE' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'COMPLETE REGISTRATION'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+complete_form_data2 <- dbGetQuery(con, query_complete_form2)
+
+if (nrow(complete_form_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(complete_form_data2)) {
+    cat("<td>")
+    if (!is.na(complete_form_data2$total_sum[i])) {
+      cat(scales::percent(complete_form_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Facilitate hand washing before treatment</td>
+      ```{r hand_washing, results='asis'}
+query_hand_washing <- "SELECT year, state, round, variable,
+    'HANDWASHING' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Facilitate hand washing prior to treatment'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+hand_washing_data <- dbGetQuery(con, query_hand_washing)
+
+if (nrow(hand_washing_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(hand_washing_data)) {
+    cat("<td>")
+    if (!is.na(hand_washing_data$total_sum[i])) {
+      cat(scales::percent(hand_washing_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    ```{r hand_washing2, results='asis'}
+query_hand_washing2 <- "SELECT year, state, round, variable,
+    'HANDWASHING' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'HANDWASHING'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+hand_washing_data2 <- dbGetQuery(con, query_hand_washing2)
+
+if (nrow(hand_washing_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(hand_washing_data2)) {
+    cat("<td>")
+    if (!is.na(hand_washing_data2$total_sum[i])) {
+      cat(scales::percent(hand_washing_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Observe the child’s mouth to see if each child chews and swallows the tablet</td>
+      ```{r check_mouth, results='asis'}
+query_check_mouth <- "SELECT year, state, round, variable,
+    'CHECKMOUTH' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Check child’s mouth to make sure that each child chews and swallows the tablet'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+check_mouth_data <- dbGetQuery(con, query_check_mouth)
+
+if (nrow(check_mouth_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(check_mouth_data)) {
+    cat("<td>")
+    if (!is.na(check_mouth_data$total_sum[i])) {
+      cat(scales::percent(check_mouth_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r check_mouth2, results='asis'}
+query_check_mouth2 <- "SELECT year, state, round, variable,
+    'CHECKMOUTH' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'CHECK MOUTH'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+check_mouth_data2 <- dbGetQuery(con, query_check_mouth2)
+
+if (nrow(check_mouth_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(check_mouth_data2)) {
+    cat("<td>")
+    if (!is.na(check_mouth_data2$total_sum[i])) {
+      cat(scales::percent(check_mouth_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Under no circumstances should a child be forced to swallow the medicine</td>
+      ```{r forced_swallow, results='asis'}
+query_forced_swallow <- "SELECT year, state, round, variable,
+    'FORCECHILD' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2023
+    AND state = 'Rivers'
+    AND round = 'Round 1'
+    AND variable = 'Under no circumstances should a child be forced to swallow the medicine'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+forced_swallow_data <- dbGetQuery(con, query_forced_swallow)
+
+if (nrow(forced_swallow_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(forced_swallow_data)) {
+    cat("<td>")
+    if (!is.na(forced_swallow_data$total_sum[i])) {
+      cat(scales::percent(forced_swallow_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r forced_swallow2, results='asis'}
+query_forced_swallow2 <- "SELECT year, state, round, variable,
+    'FORCECHILD' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'DO NOT FORCE A CHILD.'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+forced_swallow_data2 <- dbGetQuery(con, query_forced_swallow2)
+
+if (nrow(forced_swallow_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(forced_swallow_data2)) {
+    cat("<td>")
+    if (!is.na(forced_swallow_data2$total_sum[i])) {
+      cat(scales::percent(forced_swallow_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Under the program, all drugs are free, safe and effective</td>
+      ```{r drug_safe, results='asis'}
+query_drug_safe <- "SELECT year, state, round, variable,
+    'SAFEDRUG' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Under the program, all drugs are free, safe and effective:'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+drug_safe_data <- dbGetQuery(con, query_drug_safe)
+
+if (nrow(drug_safe_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(drug_safe_data)) {
+    cat("<td>")
+    if (!is.na(drug_safe_data$total_sum[i])) {
+      cat(scales::percent(drug_safe_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r drug_safe2, results='asis'}
+query_drug_safe2 <- "SELECT year, state, round, variable,
+    'SAFEDRUG' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Under the program, all drugs are free, safe and effective:'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+drug_safe_data2 <- dbGetQuery(con, query_drug_safe2)
+
+if (nrow(drug_safe_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(drug_safe_data2)) {
+    cat("<td>")
+    if (!is.na(drug_safe_data2$total_sum[i])) {
+      cat(scales::percent(drug_safe_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Drugs must be stored in a clean, safe, dry and cool location</td>
+      ```{r store_safe, results='asis'}
+query_store_safe <- "SELECT year, state, round, variable,
+    'STORESAFE' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM lga_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Drugs must be stored in a clean, safe, dry and cool location:'
+    AND attibutes IN ('Covered Partially', 'Covered in Detail')
+GROUP BY year, state, round, variable"
+
+store_safe_data <- dbGetQuery(con, query_store_safe)
+
+if (nrow(store_safe_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(store_safe_data)) {
+    cat("<td>")
+    if (!is.na(store_safe_data$total_sum[i])) {
+      cat(scales::percent(store_safe_data$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+      ```{r store_safe2, results='asis'}
+query_store_safe2 <- "SELECT year, state, round, variable,
+    'STORESAFE' AS attributes,
+    SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+    SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+FROM tt_obs
+WHERE
+    year = 2022
+    AND state = 'Rivers'
+    AND round = 'Overall'
+    AND variable = 'Drugs must be stored in a clean, safe, dry and cool location:'
+    AND attibutes IN ('Covered Partially', 'Covered Completely')
+GROUP BY year, state, round, variable"
+
+store_safe_data2 <- dbGetQuery(con, query_store_safe2)
+
+if (nrow(store_safe_data2) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(store_safe_data2)) {
+    cat("<td>")
+    if (!is.na(store_safe_data2$total_sum[i])) {
+      cat(scales::percent(store_safe_data2$total_sum[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+  </tbody>
+</table>
+
+On deworming day, every member of the deworming team (100%) knew the correct dosage, and that the drug used for treatment was mebendazole - **Figure 11.** 
+
+##### **Figure 11: Deworming team knowledge of drugs and dosage on deworming day (n=60)** 
+
+```{r figure11, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+# sql query to get data
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('What drug was used for the treatment of STH?','What is the dosage for the treatment of STH?')
+AND attributes IN ('Mebendazole/Albendazole','One tablet per child')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('One tablet per child' = 'STH dosage is one tablet per child',
+                      'Mebendazole/Albendazole' = 'STH drug is mebendazole')
+
+# Creating a new variable with the desired names
+data$variable_mapped <- variable_mapping[data$attributes]
+
+# Use reorder to arrange bars based on value
+data$variable_mapped <- reorder(data$variable_mapped, data$value)
+
+# Plotting
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = NULL, x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+print(plot)
+
+```
+
+#### <span style="color:#fe6e87;">Topic 7: Side Effects</span>
+
+Side effects are potential outcomes of any treatment that may or may not be directly related to the treatment being provided. To ensure that teachers were effectively equipped to handle such cases, trainers covered information on possible side effects and how to handle them in 98% (100% in round one and 94% in round two) of teacher training sessions and all (100% - in each round) in LGA trainings. Coverage of these side effects and teachers’ pre- and post-training knowledge is shown in - Figure 12. While post-training scores for all side effects increased from pre-training levels, the majority of participants recalled only two side effects post-training. Additional indicators relating to severe adverse effects (SAEs) can be found in - **Table 5**, including the teacher's and FLHF's knowledge of side effects and SAEs on deworming day.
+
+##### **Figure 12: Messages shared about side effects, participants’ pre- and post-training knowledge and FLHF on deworming day** 
+
+```{r figure12, echo=FALSE,out.width='100%', fig.height=6, fig.width = 8}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query messages covered under side effects
+sql_query <- "SELECT * FROM tt_obs
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'According to the trainers, the potential side effects of receiving deworming treatment may include:'
+AND attibutes IN ('Nausea', 'Abdominal Pain', 'Fatigue', 'Vomiting', 'Diarrhoea', 'Malaise', 'Fainting')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Use reorder to arrange bars from smallest to highest
+data$attibutes <- reorder(data$attibutes, data$value)
+
+# sql query pre & post knowledge
+sql_query2 <- "SELECT * FROM ttci_prepost
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'What mild side effects are considered normal while treating for STH?'
+AND attibutes IN ('Headache', 'Nausea', 'Abdominal discomfort', 'Vomiting', 'Fainting', 'Dizziness', 'Fatigue','Diarrhoea')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+#sql query to get data
+sql_query3 <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'ASK: What are side effects that would be considered normal while treating for STH with Albendazole?'
+AND attributes IN ('Headache', 'Nausea', 'Abdominal discomfort', 'Vomiting', 'Dizziness', 'Fatigue')"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# Use reorder to arrange bars based on value
+data3$attributes <- reorder(data3$attributes, data3$value)
+
+# plotting
+plot <- ggplot(data, aes(x = attibutes, y = value, fill = attibutes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "Messages covered under side\neffects (n=47)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting 2
+plot2 <- ggplot(data2, aes(x = sourcefile, y = value, fill = sourcefile)) +
+     geom_bar(stat = "identity", position = "dodge", color = "white") +
+     facet_wrap(~attibutes, scales = 'free_y', ncol = 1) +
+     labs(title = "Pre- and post- knowledge", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "bottom") +  
+     geom_text(aes(label = scales::percent(value), group = attibutes),
+               position = position_dodge(width = 0.9),  
+               vjust = 0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#D3D3D3"), name = NULL)+
+  guides(fill = guide_legend(override.aes = list(title = NULL)))+
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting 3
+plot3 <- ggplot(data3, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = "FLHF knowledge of side effects on\ndeworming day (n=14)", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20)) 
+
+# Arrange the plot 
+print(plot2+plot/plot3)
+```
+
+##### **Table 5: Coverage and retention of knowledge of side effects in LGA and teacher trainings and on deworming day**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Year 6, Round 2</th>
+      <th>Year 6, Round 1</th>
+      <th>Year 5, Round 1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="4" class="left-align"><strong>Topics covered during training</strong></td>
+    </tr>
+    <tr>
+      <td>Steps to be taken in cases of SAEs at LGA trainings</td>
+      ```{r steps_sae, results='asis'}
+      query_steps_sae <- "SELECT * FROM lga_obs
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND variable = 'Steps taken in case severe adverse events'
+                          AND Round IN ('Round 1', 'Round 2')"
+      steps_sae_data <- dbGetQuery(con, query_steps_sae)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(steps_sae_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(steps_sae_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>100%</td>
+    </tr>
+    <tr>
+      <td>Steps to be taken in cases of SAEs at teacher trainings</td>
+      ```{r steps_sae2, results='asis'}
+      query_steps_sae2 <- "SELECT *,
+                                  CASE
+                                     WHEN attibutes = 'Not covered' THEN 1 - value
+                                     ELSE value
+                                  END AS value_new
+                                  FROM tt_obs
+                                  WHERE year = 2022
+                                  AND state = 'Rivers'
+                                  AND variable = 'Steps taken in case severe adverse events'
+                                  AND attibutes = 'Not covered'
+                                  AND Round IN ('Round 1', 'Round 2')"
+      steps_sae_data2 <- dbGetQuery(con, query_steps_sae2)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(steps_sae_data2$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(steps_sae_data2$value_new[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>86%</td>
+    </tr>
+    <tr>
+      <td>Side effects in LGA trainings</td>
+      ```{r side-effects, results='asis'}
+      query_side_effects <- "SELECT year, state, round, variable,
+                             'SIDEFFECTS' AS attributes,
+                             SUM(CASE WHEN attibutes = 'Covered in Detail' THEN value ELSE 0 END) +
+                             SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+                             FROM lga_obs
+                             WHERE year = 2023
+                             AND state = 'Rivers'
+                             AND round IN ('Round 1', 'Round 2')
+                             AND variable = 'Information on side effects'
+                             AND attibutes IN ('Covered Partially', 'Covered in Detail')
+                             GROUP BY year, state, round, variable"
+      side_effects_data <- dbGetQuery(con, query_side_effects)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(side_effects_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(side_effects_data$total_sum[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>100%</td>
+    </tr>
+    <tr>
+      <td>Side effects in teacher trainings</td>
+      ```{r side-effects2, results='asis'}
+      query_side_effects2 <- "SELECT year, state, round, variable,
+                             'SIDEFFECTS' AS attributes,
+                             SUM(CASE WHEN attibutes = 'Covered Completely' THEN value ELSE 0 END) +
+                             SUM(CASE WHEN attibutes = 'Covered Partially' THEN value ELSE 0 END) AS total_sum
+                             FROM tt_obs
+                             WHERE year = 2022
+                             AND state = 'Rivers'
+                             AND round IN ('Round 1', 'Round 2')
+                             AND variable = 'Coverage of information on side effects'
+                             AND attibutes IN ('Covered Partially', 'Covered Completely')
+                             GROUP BY year, state, round, variable"
+      side_effects_data2 <- dbGetQuery(con, query_side_effects2)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(side_effects_data2$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(side_effects_data2$total_sum[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>89%</td>
+    </tr>
+    <tr>
+      <td colspan="4" class="left-align"><strong>LGA and Teacher training</strong></td>
+    </tr>
+    <tr>
+      <td>LGA training attendees that could cite at least one side effect in post-training interviews</td>
+      ```{r one-effect, results='asis'}
+      query_one_effect <- "SELECT *,
+                                  CASE
+                                     WHEN attibutes = 'Don’t Know' THEN 1 - value
+                                     ELSE value
+                                  END AS value_new
+                                  FROM lga_prepost
+                                  WHERE year = 2022
+                                  AND sourcefile = 'POST'
+                                  AND state = 'Rivers'
+                                  AND variable = 'What are the mild side effects that are considered normal while treating for STH?'
+                                  AND attibutes = 'Don’t Know'
+                                  AND Round IN ('Round 1', 'Round 2')"
+      one_effect_data <- dbGetQuery(con, query_one_effect)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(one_effect_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(one_effect_data$value_new[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>100%</td>
+    </tr>
+    <tr>
+      <td>Teacher training attendees that could cite at least one side effect in post-training interviews</td>
+      ```{r one-effect2, results='asis'}
+      query_one_effect2 <- "SELECT *,
+                                  CASE
+                                     WHEN attibutes = 'Don’t Know' THEN 1 - value
+                                     ELSE value
+                                  END AS value_new
+                                  FROM ttci_prepost
+                                  WHERE year = 2022
+                                  AND sourcefile = 'POST'
+                                  AND state = 'Rivers'
+                                  AND variable = 'What mild side effects are considered normal while treating for STH?'
+                                  AND attibutes = 'Don’t Know'
+                                  AND Round IN ('Round 1', 'Round 2')"
+      one_effect_data2 <- dbGetQuery(con, query_one_effect2)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(one_effect_data2$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(one_effect_data2$value_new[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>97%</td>
+    </tr>
+    <tr>
+      <td>Teachers that reported having FLHF staff contact information in post-training interviews</td>
+      ```{r flhf-contact, results='asis'}
+      query_flhf_contact <- "SELECT * FROM ttci_prepost
+                            WHERE year = 2022
+                            AND variable = 'Do you have the contact details of the FLHF who will be supporting your school on Deworming Day?'
+                            AND state = 'Rivers'
+                            AND Round IN ('Round 1', 'Round 2')"
+      flhf_contact_data <- dbGetQuery(con, query_flhf_contact)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(flhf_contact_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(flhf_contact_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>62%</td>
+    </tr>
+    <tr>
+      <td colspan="4" class="left-align"><strong>Deworming day</strong></td>
+    </tr>
+    <tr>
+      <td>FLHF staff could cite at least one side effect</td>
+      <td>100%</td>
+      <td>100%</td>
+      <td>100%</td>
+    </tr>
+    <tr>
+      <td>FLHF staff mentioned the correct steps to take in case of SAE</td>
+       ```{r correct-steps, results='asis'}
+      query_correct_steps <- "SELECT * FROM dd_main
+                              WHERE year = 2022
+                              AND state = 'Rivers'
+                              AND round IN ('Round 1', 'Round 2')
+                              AND variable = 'school FLHFs who mentioned the correct steps to take in case of an SAE'"
+
+      correct_steps_data <- dbGetQuery(con, query_correct_steps)
+      
+      rounds <- c('Round 2', 'Round 1')
+      
+      for (i in 1:length(rounds)) {
+        round_name <- rounds[i]
+        index <- which(correct_steps_data$round == round_name)
+        cat("<td>")
+        if (length(index) > 0) {
+          cat(scales::percent(correct_steps_data$value[index]), " ")
+        } else {
+          cat("N/A ")
+        }
+        cat("</td>")
+      }
+      ```
+      <td>40%</td>
+    </tr>
+  </tbody>
+</table>
+
+
+### <span style="color:#fe6e87;">Training Logistics</span>
+
+/* figure */
+
+## <span style="color:#fe6e87;">4.2 Distribution of Drugs and Materials</span>
+
+```{r distribution-of-materials, echo = FALSE}
+
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('schools with all the key STH materials', 'schools with reporting forms present', 'OBSERVE: Please Select All Of The Materials, Forms, And Drugs Present At The Deworming Station:')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+
+value_percent <- data$value[data$variable == 'schools with all the key STH materials'] * 100
+
+value_percent2 <- data$value[data$variable == 'OBSERVE: Please Select All Of The Materials, Forms, And Drugs Present At The Deworming Station:'] * 100
+
+value_percent3 <- data$value[data$variable == 'schools with reporting forms present'] * 100
+
+renderText(sprintf(
+  "Trainers should receive key materials before training (drugs and reporting forms) to distribute to teachers as well as to aid in teacher training sessions. On deworming day, %.0f%% of schools had all required materials; all (%.0f%%) had drugs and %.0f%% had reporting forms. The cascade of these materials is shown in - Figure 14 below.",
+  value_percent,
+  value_percent2,
+  value_percent3
+))
+```
+
+##### **Figure 14: Material distribution across the cascade**
+
+```{r figure14, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query to get data (key materials)
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'schools with all the key STH materials'"
+
+data <- dbGetQuery(con, sql_query)
+
+# sql query to get data (key materials)
+sql_query2 <- "SELECT * FROM ttci_prepost
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Received all key materials for DD'"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# sql query to get data (key materials)
+sql_query3 <- "SELECT * FROM tt_admin
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'key materials distributed'"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# Plotting 1
+plot <- ggplot(data, aes(x = attributes, y = value)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = NULL, x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting 2
+plot2 <- ggplot(data2, aes(x = attibutes, y = value)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = NULL, x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Plotting 3
+plot3 <- ggplot(data3, aes(x = attibutes, y = value)) +
+    geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+    geom_text(aes(label = scales::percent(value), y = value, group = attibutes), 
+              position = position_stack(vjust = 0.5), size = 3) +
+    labs(title = NULL, x = NULL, y = NULL) +
+    coord_flip() +
+    theme_minimal() +
+    theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+# Arrange plots
+grid.arrange(plot, plot2, plot3, ncol = 1, left = "All KEY materials")
+```
+
+From post-deworming interviews with head teachers, 97% indicated the sufficiency of the initial drugs received.
+
+##### **Table 6: Post-deworming interview with head teachers (n=60)**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Percent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Sufficient drugs available on deworming week</td>
+      ```{r sufficient_drug, results='asis'}
+      query_sufficient_drug <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND round = 'Overall'
+                          AND variable = 'ASK:Were deworming medicines sufficient for today?'"
+                          
+      sufficient_drug_data <- dbGetQuery(con, query_sufficient_drug)
+      
+      if (nrow(sufficient_drug_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(sufficient_drug_data)) {
+    cat("<td>")
+    if (!is.na(sufficient_drug_data$value[i])) {
+      cat(scales::percent(sufficient_drug_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+<tr>
+      <td>Surplus drugs left after deworming week</td>
+      ```{r surplus_drug, results='asis'}
+      query_surplus_drug <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'ASK:Do you have any extra tablets left after the deworming day?'"
+                          
+      surplus_drug_data <- dbGetQuery(con, query_surplus_drug)
+      
+      if (nrow(surplus_drug_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(surplus_drug_data)) {
+    cat("<td>")
+    if (!is.na(surplus_drug_data$value[i])) {
+      cat(scales::percent(surplus_drug_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+    <td>Plans for dealing with the surplus drugs after deworming  (n=50)</td>
+    <td></td>
+    </tr>
+     <tr>
+      <td>Keep for mop-up</td>
+      ```{r mop_up, results='asis'}
+      query_mop_up <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What will you do with these excess tablets after the DD?'
+                          AND attributes = 'Keep for mop-up'"
+                          
+      mop_up_data <- dbGetQuery(con, query_mop_up)
+      
+      if (nrow(mop_up_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(mop_up_data)) {
+    cat("<td>")
+    if (!is.na(mop_up_data$value[i])) {
+      cat(scales::percent(mop_up_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+<tr>
+      <td>Deworm junior secondary</td>
+      ```{r deworm_junior, results='asis'}
+      query_deworm_junior <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What will you do with these excess tablets after the DD?'
+                          AND attributes = 'Other:Deworm junior secondary'"
+                          
+      deworm_junior_data <- dbGetQuery(con, query_deworm_junior)
+      
+      if (nrow(deworm_junior_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(deworm_junior_data)) {
+    cat("<td>")
+    if (!is.na(deworm_junior_data$value[i])) {
+      cat(scales::percent(deworm_junior_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td>Keep for next year</td>
+      ```{r next_year, results='asis'}
+      query_next_year <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What will you do with these excess tablets after the DD?'
+                          AND attributes = 'Keep for next year'"
+                          
+      next_year_data <- dbGetQuery(con, query_next_year)
+      
+      if (nrow(next_year_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(next_year_data)) {
+    cat("<td>")
+    if (!is.na(next_year_data$value[i])) {
+      cat(scales::percent(next_year_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+ <tr>
+      <td>Return to FLHF/LGA</td>
+      ```{r return_FLHF, results='asis'}
+      query_return_FLHF <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What will you do with these excess tablets after the DD?'
+                          AND attributes = 'Return to FLHF/LGA'"
+                          
+      return_FLHF_data <- dbGetQuery(con, query_return_FLHF)
+      
+      if (nrow(return_FLHF_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(return_FLHF_data)) {
+    cat("<td>")
+    if (!is.na(return_FLHF_data$value[i])) {
+      cat(scales::percent(return_FLHF_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+     </tbody>
+   </table>
+   
+## <span style="color:#fe6e87;">4.3 Community Sensitization</span>
+Community sensitization before deworming day is an evidence-supported factor critical for MDA success. On deworming day, monitors interviewed 168 parents (119 of enrolled children and 49 of non-enrolled children) to gauge their awareness of the MDA, as well as their sources of MDA information. **Table 7** shows statistics from these interviews.
+
+##### **Table 7: Demographic characteristics of households visited**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th>Indicator</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Average number of children within the target age group per household</td>
+      <td>2</td>
+      </tr>
+      <tr>
+      <td colspan="4" class="left-align"><strong>Highest level of education</strong></td>
+      </tr>
+      <tr>
+        <td>Secondary school</td>
+      ```{r secondary_school, results='asis'}
+      query_secondary_school <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'Secondary school'"
+                          
+      secondary_school_data <- dbGetQuery(con, query_secondary_school)
+      
+      if (nrow(secondary_school_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(secondary_school_data)) {
+    cat("<td>")
+    if (!is.na(secondary_school_data$value[i])) {
+      cat(scales::percent(secondary_school_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+<tr>
+        <td>Primary school</td>
+      ```{r primary_school, results='asis'}
+      query_primary_school <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'Primary school'"
+                          
+      primary_school_data <- dbGetQuery(con, query_primary_school)
+      
+      if (nrow(primary_school_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(primary_school_data)) {
+    cat("<td>")
+    if (!is.na(primary_school_data$value[i])) {
+      cat(scales::percent(primary_school_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>University</td>
+      ```{r university, results='asis'}
+      query_university <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'University'"
+                          
+      university_data <- dbGetQuery(con, query_university)
+      
+      if (nrow(university_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(university_data)) {
+    cat("<td>")
+    if (!is.na(university_data$value[i])) {
+      cat(scales::percent(university_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Diploma</td>
+      ```{r diploma, results='asis'}
+      query_diploma <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'Diploma course'"
+                          
+      diploma_data <- dbGetQuery(con, query_diploma)
+      
+      if (nrow(diploma_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(diploma_data)) {
+    cat("<td>")
+    if (!is.na(diploma_data$value[i])) {
+      cat(scales::percent(diploma_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>No schooling</td>
+      ```{r no_schooling, results='asis'}
+      query_no_schooling <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'Diploma course'"
+                          
+      no_schooling_data <- dbGetQuery(con, query_no_schooling)
+      
+      if (nrow(no_schooling_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(no_schooling_data)) {
+    cat("<td>")
+    if (!is.na(no_schooling_data$value[i])) {
+      cat(scales::percent(no_schooling_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Certificate</td>
+      ```{r certificate, results='asis'}
+      query_certificate <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your highest level of education?'
+                          AND attributes = 'Certificate course'"
+                          
+      certificate_data <- dbGetQuery(con, query_certificate)
+      
+      if (nrow(certificate_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(certificate_data)) {
+    cat("<td>")
+    if (!is.na(certificate_data$value[i])) {
+      cat(scales::percent(certificate_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+      <td colspan="4" class="left-align"><strong>Occupation</strong></td>
+      </tr>
+      <tr>
+            <td>Business man / woman</td>
+      ```{r business, results='asis'}
+      query_business <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Business man/woman'"
+                          
+      business_data <- dbGetQuery(con, query_business)
+      
+      if (nrow(business_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(business_data)) {
+    cat("<td>")
+    if (!is.na(business_data$value[i])) {
+      cat(scales::percent(business_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Business man / woman</td>
+      ```{r farmer, results='asis'}
+      query_farmer <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Farmer'"
+                          
+      farmer_data <- dbGetQuery(con, query_farmer)
+      
+      if (nrow(farmer_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(farmer_data)) {
+    cat("<td>")
+    if (!is.na(farmer_data$value[i])) {
+      cat(scales::percent(farmer_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Casual labourer</td>
+      ```{r casual_laborer, results='asis'}
+      query_casual_laborer <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Casual labourer'"
+                          
+      casual_laborer_data <- dbGetQuery(con, query_casual_laborer)
+      
+      if (nrow(casual_laborer_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(casual_laborer_data)) {
+    cat("<td>")
+    if (!is.na(casual_laborer_data$value[i])) {
+      cat(scales::percent(casual_laborer_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Teacher</td>
+      ```{r teacher, results='asis'}
+      query_teacher <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Teacher'"
+                          
+      teacher_data <- dbGetQuery(con, query_teacher)
+      
+      if (nrow(teacher_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(teacher_data)) {
+    cat("<td>")
+    if (!is.na(teacher_data$value[i])) {
+      cat(scales::percent(teacher_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Civil / Public servant</td>
+      ```{r civil_servant , results='asis'}
+      query_civil_servant <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Civil/Public Servant'"
+                          
+      civil_servant_data <- dbGetQuery(con, query_civil_servant)
+      
+      if (nrow(civil_servant_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(civil_servant_data)) {
+    cat("<td>")
+    if (!is.na(civil_servant_data$value[i])) {
+      cat(scales::percent(civil_servant_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Artisan</td>
+      ```{r artisan , results='asis'}
+      query_artisan <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Artisan'"
+                          
+      artisan_data <- dbGetQuery(con, query_artisan)
+      
+      if (nrow(artisan_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(artisan_data)) {
+    cat("<td>")
+    if (!is.na(artisan_data$value[i])) {
+      cat(scales::percent(artisan_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Agriculture</td>
+      ```{r agriculture , results='asis'}
+      query_agriculture <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Agriculture'"
+                          
+      agriculture_data <- dbGetQuery(con, query_agriculture)
+      
+      if (nrow(agriculture_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(agriculture_data)) {
+    cat("<td>")
+    if (!is.na(agriculture_data$value[i])) {
+      cat(scales::percent(agriculture_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>Homemaker</td>
+      ```{r home_maker , results='asis'}
+      query_home_maker <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'Home maker'"
+                          
+      home_maker_data <- dbGetQuery(con, query_home_maker)
+      
+      if (nrow(home_maker_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(home_maker_data)) {
+    cat("<td>")
+    if (!is.na(home_maker_data$value[i])) {
+      cat(scales::percent(home_maker_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    <tr>
+            <td>None</td>
+      ```{r none , results='asis'}
+      query_none <- "SELECT * FROM cms
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'What is your primary Occupation?'
+                          AND attributes = 'None'"
+                          
+      none_data <- dbGetQuery(con, query_none)
+      
+      if (nrow(none_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(none_data)) {
+    cat("<td>")
+    if (!is.na(none_data$value[i])) {
+      cat(scales::percent(none_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+    </tr>
+    </tbody>
+   </table>
+   
+##### <span style="color:#fe6e87;">Parents Deworming Knowledge</span>
+
+Seventy-three percent (73%) of parents interviewed on deworming day (down from 82% last year) were aware of deworming happening within their communities, with this proportion being higher among parents of enrolled children (86%) compared to parents of non-enrolled children (43%, Figure 15). Overall awareness was at 77% (90% parents of enrolled children and 41% parents of non-enrolled) in round two, which is 7 percentage points higher than in round one (81% parents of enrolled children and 44% parents of non-enrolled).
+
+##### **Figure 15: Awareness among parents of enrolled and non-enrolled children**
+
+```{r figure15, echo=FALSE}
+
+names <- c("Y3R1", "Y3R2", "Y4R1", "Y5R1", "Y6R1", "Y6R2")
+Enrolled <- c(0.87, 0.82, 0.82, 0.92, 0.81, 0.90)
+Non_enrolled <- c(0.47, 0.55, 0.29, 0.58, 0.44, 0.41)
+Z <- data.frame(names, Enrolled, Non_enrolled)
+
+library(ggplot2)
+
+# Plot
+p <- ggplot(Z, aes(x = names)) +
+  geom_line(aes(y = Enrolled, color = "Line 1"), linetype = "solid", size = 1, show.legend = TRUE, group = 1) +
+  geom_point(aes(y = Enrolled, color = "Line 1"), size = 3, show.legend = TRUE) +
+  geom_line(aes(y = Non_enrolled, color = "Line 2"), linetype = "solid", size = 1, show.legend = TRUE, group = 2) +
+  geom_point(aes(y = Non_enrolled, color = "Line 2"), size = 3, show.legend = TRUE) +
+  geom_text(aes(y = Enrolled, label = paste0(round(Enrolled * 100), "%"), color = "Line 1"), 
+            vjust = -1, hjust = 0.5, show.legend = FALSE) +  # Adjust vjust to move label above the marker
+  geom_text(aes(y = Non_enrolled, label = paste0(round(Non_enrolled * 100), "%"), color = "Line 2"), 
+            vjust = -1, hjust = 0.5, show.legend = FALSE) +  # Adjust vjust to move label above the marker
+  scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, by = 0.1)) +
+  scale_color_manual(values = c("Line 1" = "#fe6e87", "Line 2" = "#c5c6c7"), labels = c("Enrolled", "Non-enrolled")) +
+  labs(x = NULL, y = NULL, color = NULL) +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(), # Remove y-axis title
+        axis.ticks.y = element_blank(), # Remove y-axis ticks
+        axis.text.y = element_blank(),  # Remove y-axis labels
+        panel.grid.major = element_blank(),  # Remove major gridlines
+        panel.grid.minor = element_blank())  # Remove minor gridlines
+
+print(p)
+```
+
+Monitors further asked parents questions about their knowledge of the deworming date, target age group, and what the treatment was for. The results are summarized in - **Figure 16**.
+
+##### **Figure 16: Parent knowledge of key information**
+
+```{r figure16, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query to get data 
+sql_query <- "SELECT * FROM cms
+              WHERE year = 2022
+              AND round = 'Overall'
+              AND state = 'Rivers'
+              AND variable IN ('Which worms are children being treated for in today’s deworming?(non-enrolled)','Which worms are children being treated for in today’s deworming?(enrolled)',
+'Which worms are children being treated for in today’s deworming?')
+              AND attributes = 'Intestinal worms/STH'"
+
+data <- dbGetQuery(con, sql_query)
+
+# sql query to get data 
+sql_query2 <- "SELECT * FROM cms
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable IN ('What is the age group eligible to be treated for STH under the program?(non-enrolled)','What is the age group eligible to be treated for STH under the program?(enrolled)',
+'What is the age group eligible to be treated for STH under the program?')
+AND attributes = '5-14 Years'"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# sql query to get data 
+sql_query3 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Proportion of parents who were aware of deworming activity at school'
+AND (attributes IS NULL OR attributes IN ('Enrolled children', 'Non-enrolled children'))"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+#plotting 1
+plot <- ggplot(data, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Knew treatment\nwas for worms", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959"))
+
+#plotting 2
+plot2 <- ggplot(data2, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Target age-group", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959"))
+
+#plotting 3
+plot3 <- ggplot(data3, aes(x = attributes, y = value, fill = attributes)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Deworming date", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959"))
+
+# Arrange plots
+print(plot/plot2/plot3)
+```
+
+During community interviews with parents on deworming day, 21% of parents (20% of enrolled and 24% of non-enrolled) indicated that they had concerns or questions about the deworming activity. The concerns included sensitization on worm infection and prevention (11%), the safety of the deworming medicine (8%), involving parents in the program’s training (6%), the program’s continuation (6%), and the need for early awareness (3%); questions included why adults are not being dewormed (39%), how long the program will last (6%), who is providing the deworming medicine - the government or the health facility (6%), whether the deworming medicine is provided for free (6%), whether deworming is only done in schools (3%) and why non-enrolled children are not getting deworming messages (3%).
+
+
+##### <span style="color:#fe6e87;">Sources of Deworming Day Information</span>
+
+```{r sources_dd, echo = FALSE}
+
+# get data1
+sql_query <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'ASK: How did you hear about the deworming exercise to be conducted in your community?'
+AND attributes  IN ('My child told me', 'Teacher from a local school')"
+ 
+data <- dbGetQuery(con, sql_query)
+
+# get data2
+sql_query2 <- "SELECT * FROM cms
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable ='What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?'
+AND attributes IN ('Town announcer','Radio','Teachers','School Children')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Calculate the percentage and display the text
+
+value_percent <- data$value[data$variable == 'ASK: How did you hear about the deworming exercise to be conducted in your community?' &  data$attributes == 'My child told me'] * 100
+
+value_percent2 <- data$value[data$variable == 'ASK: How did you hear about the deworming exercise to be conducted in your community?' & data$attributes == 'Teacher from a local school'] * 100
+
+value_percent3 <- data2$value[data2$variable == 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?' & data2$attributes == 'Town announcer'] * 100
+
+value_percent4 <- data2$value[data2$variable == 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?' & data2$attributes == 'Radio'] * 100
+
+value_percent5 <- data2$value[data2$variable == 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?' & data2$attributes == 'Teachers'] * 100
+
+value_percent6 <- data2$value[data2$variable == 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?' & data2$attributes == 'School Children'] * 100
+
+# Calculate the number of rows
+n_rows <- nrow(data)
+
+output_source <- (sprintf(
+  "The majority of the parents heard about deworming from either their child (%.0f%%) or a teacher (%.0f%%). Most parents prefer getting deworming information from the town announcer (%.0f%%), radio (%.0f%%), teachers (%.0f%%), and children (%.0f%%) - Figure 17.",
+  value_percent,
+  value_percent2,
+  value_percent3,
+  value_percent4,
+  value_percent5,
+  value_percent6,
+  n_rows
+))
+renderText(output_source)
+```
+
+##### **Figure 17: Sources of deworming day information cited by parents**
+
+```{r figure17, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+
+# sql query to get data
+sql_query <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes IN ('School Children', 'My child told me')"
+
+data <-  dbGetQuery(con, sql_query)
+
+# sql query to get data
+sql_query2 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes IN ('Teacher from a local school', 'Teachers')"
+
+data2 <-  dbGetQuery(con, sql_query2)
+
+# sql query to get data
+sql_query3 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes = 'Poster'"
+
+data3 <-  dbGetQuery(con, sql_query3)
+
+# sql query to get data
+sql_query4 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes IN ('Town announcer', 'Town Announcer')"
+
+data4 <-  dbGetQuery(con, sql_query4)
+
+# sql query to get data
+sql_query5 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes = 'Radio'"
+
+data5 <-  dbGetQuery(con, sql_query5)
+
+# sql query to get data
+sql_query6 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable IN ('ASK: How did you hear about the deworming exercise to be conducted in your community?', 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?')
+AND attributes IN('It was announced in religious centres','Other:Religious gathering')"
+
+data6 <-  dbGetQuery(con, sql_query6)
+
+# sql query to get data
+sql_query7 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?'
+AND attributes = 'SMS/Mobile Phone'"
+
+data7 <-  dbGetQuery(con, sql_query7)
+
+# sql query to get data
+sql_query8 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?'
+AND attributes = 'Town Hall Meeting'"
+
+data8 <-  dbGetQuery(con, sql_query8)
+
+# sql query to get data
+sql_query9 <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'What are your top three most preferred methods of communication to get information about future deworming activity in the nearby school?'
+AND attributes = 'Village elders'"
+
+data9 <-  dbGetQuery(con, sql_query9)
+
+#plotting 1
+plot <- ggplot(data, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Children", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 2
+plot2 <- ggplot(data2, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Teacher", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 3
+plot3 <- ggplot(data3, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Poster", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 4
+plot4 <- ggplot(data4, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Town\nannouncer", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 5
+plot5 <- ggplot(data5, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Radio", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 6
+plot6 <- ggplot(data6, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Religious\ncentre", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#fe6e87", "#c5c6c7"))
+
+#plotting 7
+plot7 <- ggplot(data7, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Mobile\nPhone", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#c5c6c7"))
+
+#plotting 8
+plot8 <- ggplot(data8, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Town\nHall\nMeeting", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#c5c6c7"))
+
+#plotting 9
+plot9 <- ggplot(data9, aes(x = variable, y = value, fill = variable)) +
+  geom_bar(stat = "identity", position = "dodge", color = "white", width = 1) +
+  geom_text(aes(label = scales::percent(value)), 
+            position = position_dodge(width = 0.8), 
+            hjust = -0.2, size = 3) +
+  labs(title = NULL, x = "Village\nelders", y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.y = element_blank(), axis.text.x = element_blank(), legend.position = "none") +
+  scale_fill_manual(values = c("#c5c6c7"))
+
+print(plot/plot2/plot3/plot4/plot5/plot6/plot7/plot8/plot9)
+```
+
+
+##### <span style="color:#fe6e87;">Parents’ Reasons for Not Sending Children for Deworming</span>
+
+```{r reason-not-sending, echo = FALSE}
+
+sql_query <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Proportion of parents who were aware of deworming activity at school'
+AND attributes IS NULL"
+
+data <- dbGetQuery(con, sql_query)
+
+# Calculate the percentage and display the text
+value_percent <- data$value[data$variable == 'Proportion of parents who were aware of deworming activity at school'] * 100
+
+# Calculate the number of rows
+n_rows <- nrow(data)
+
+output_text <- sprintf(
+  "%.0f%% of parents around school were aware of deworming, and 76% of these parents indicated that they would send at least one of their children for deworming. The reasons for not sending children for deworming can be found in - Figure 18.",
+  value_percent,
+  n_rows
+)
+
+renderText(output_text)
+```
+
+##### **Figure 18: Reasons cited by parents (n=40) for not sending children for deworming**
+
+```{r figure18, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+
+sql_query <- "SELECT * FROM cms
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Why will/did your children NOT get deworming medicine today?'"
+
+data <- dbGetQuery(con, sql_query)
+
+# Use reorder to arrange bars based on value
+data$attributes <- reorder(data$attributes, data$value)
+
+# plotting
+plot <- ggplot(data, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title =NULL, x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) +  
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 20))
+
+print(plot)
+```
+
+##### <span style="color:#fe6e87;">FLHF Interview</span>
+
+After speaking with parents in the community surrounding schools, the monitors also spoke with the FLHF in the community. Below - **Figure 19**, shows the results of this interview on their knowledge of deworming day.
+
+##### **Figure 19: FLHF knowledge regarding the deworming activity (n=28)**
+
+```{r figure 19, echo=FALSE, out.width='100%', fig.height=6, fig.width = 8}
+
+library(ggplot2)
+library(gridExtra)
+library(patchwork)
+library(stringr)
+
+# SQL query to get data
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'ASK:Did you attend any FLHF forum session on deworming in the past 15 days?'"
+
+data <- dbGetQuery(con, sql_query)
+
+# SQL query to get data
+sql_query2 <- "SELECT *
+FROM dd_main
+WHERE year = 2022
+  AND round = 'Overall'
+  AND state = 'Rivers'
+  AND variable = 'ASK: What are your responsibilities as a FLHF in the School-based Deworming Program?'
+  AND attributes NOT IN ('Other: summit drugs to the schools assigned', 'Other: inform chief of deworming activity')"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Use reorder to arrange bars from smallest to highest
+data2$attributes <- reorder(data2$attributes, data2$value)
+
+# SQL query to get data
+sql_query3 <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'ASK: Which materials were provided to you by the deworming program for community sensitization?'
+AND attributes NOT IN ('Other:Drugs')"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# Use reorder to arrange bars from smallest to highest
+data3$attributes <- reorder(data3$attributes, data3$value)
+
+# SQL query to get data
+sql_query4 <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND round = 'Overall'
+AND state = 'Rivers'
+AND variable = 'ASK: What activities have you conducted for the deworming day to sensitize the community around the school?'
+AND attributes NOT IN ('Other:Drugs', 'Other:To check', 'Other:Training')"
+
+data4 <- dbGetQuery(con, sql_query4)
+
+# Use reorder to arrange bars from smallest to highest
+data4$attributes <- reorder(data4$attributes, data4$value)
+
+# Plotting 1
+plot <- ggplot(data, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="Did you attend any FLHF forum session on\ndeworming in the past 15 days?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) 
+
+# Plotting 2
+plot2 <- ggplot(data2, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="What are your responsibilities as a FLHF in the\nSchool-based Deworming Program (SBDP)?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) 
+
+# Plotting 3
+plot3 <- ggplot(data3, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="Which materials were provided to you by the deworming\nprogram for community sensitization?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank())
+
+# Plotting 4
+plot4 <- ggplot(data4, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="What activities have you conducted to sensitize\nthe community around the school?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank())
+
+print(plot/plot2/plot3/plot4)
+```
+
+## <span style="color:#fe6e87;">4.4 Deworming Week</span>
+
+Ninety-seven percent (97% - for both round one and round two) of head teachers interviewed on deworming day indicated that either they (70% - for both round one and round two) or another teacher at the school (27% - in both round one and round two) had attended a training session in preparation for deworming day within 30 days of the MDA. A follow-up interview with a member of the deworming team also revealed that all (100%) of them had either attended the training or been sensitized within the school on how to administer deworming drugs. 
+
+##### <span style="color:#fe6e87;">Deworming Week Delivery</span>
+
+Of the 60 schools that were originally sampled for deworming day monitoring, 13 schools were replaced due to various challenges:  five could not be located or accessed; four were not aware of deworming; two were not deworming; one had rescheduled deworming; and one had closed down. Of the originally sampled schools that were in session, could be located, and had parental consent for deworming, 47 out of 54 conducted deworming on the designated day, for a rate of 87%, an increase from 60% from the previous year of deworming. All 13 of the schools that were not monitored due to the above reasons were replaced and monitored, bringing the total to 60.
+
+##### <span style="color:#fe6e87;">Adherence to MDA Procedures</span>
+
+To provide quality assurance of the MDA administration, monitors observed whether deworming teams adhered to key drug administration steps. Results show high levels of compliance with the recommended practices - **Table 8**. However, the proportion of teachers who ensured that children washed their hands before treatment stood at 37%, this remained the same as that recorded in year 5, 2021. 
+
+##### **Table 8: MDA procedures observed by monitors during drug administration (n=60)**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th>MDA practice</th>
+      <th>Percent</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td colspan="4" class="left-align"><strong>**Pre-deworming preparations**</strong></td>
+      </tr>
+      <tr>
+        <td>Teachers ensured children washed their hands before treatment</td>
+      ```{r washing_hands, results='asis'}
+      query_washing_hands <- "SELECT * FROM dd_main
+                          WHERE year = 2022
+                          AND state = 'Rivers'
+                          AND round = 'Overall'
+                          AND variable = 'DD protocols'
+                          AND attributes = 'Hand washing by children'"
+                          
+      washing_hands_data <- dbGetQuery(con, query_washing_hands)
+      
+      if (nrow(washing_hands_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(washing_hands_data)) {
+    cat("<td>")
+    if (!is.na(washing_hands_data$value[i])) {
+      cat(scales::percent(washing_hands_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+<tr>
+        <td>Health education messages were shared with children before treatment</td>
+      ```{r education_messages, results='asis'}
+      query_education_messages <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'DD protocols'	
+                                 AND attributes = 'Health Mesages shared'"
+                          
+      education_messages_data <- dbGetQuery(con, query_education_messages)
+      
+      if (nrow(education_messages_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(education_messages_data)) {
+    cat("<td>")
+    if (!is.na(education_messages_data$value[i])) {
+      cat(scales::percent(education_messages_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+<tr>
+        <td>Deworming team comprised of two or more teachers</td>
+      ```{r deworming_team, results='asis'}
+      query_deworming_team <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'DD protocols'	
+                                 AND attributes = 'Dewoming team is more than 2 teachers'"
+                          
+      deworming_team_data <- dbGetQuery(con, query_deworming_team)
+      
+      if (nrow(deworming_team_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(deworming_team_data)) {
+    cat("<td>")
+    if (!is.na(deworming_team_data$value[i])) {
+      cat(scales::percent(deworming_team_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+<tr>
+      <td colspan="4" class="left-align"><strong>**Drug administration**</strong></td>
+      </tr>
+      <tr>
+        <td>Teachers gave the correct dosage for mebendazole (1 tablet)</td>
+      ```{r correct_dosage, results='asis'}
+      query_correct_dosage <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'Tabs and dosage protocol'	
+                                 AND attributes = 'Children chewed MEB'"
+                          
+      correct_dosage_data <- dbGetQuery(con, query_correct_dosage)
+      
+      if (nrow(correct_dosage_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(correct_dosage_data)) {
+    cat("<td>")
+    if (!is.na(correct_dosage_data$value[i])) {
+      cat(scales::percent(correct_dosage_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+<tr>
+        <td>Spoilt tablets were properly disposed of (n=9)</td>
+      ```{r properly_disposed, results='asis'}
+      query_properly_disposed <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'Tabs and dosage protocol'	
+                                 AND attributes = 'Properly disposed spoilt tablets'"
+                          
+      properly_disposed_data <- dbGetQuery(con, query_properly_disposed)
+      
+      if (nrow(properly_disposed_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(properly_disposed_data)) {
+    cat("<td>")
+    if (!is.na(properly_disposed_data$value[i])) {
+      cat(scales::percent(properly_disposed_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+<tr>
+      <td colspan="4" class="left-align"><strong>**Recording treatment**</strong></td>
+      </tr>
+      <tr>
+        <td>The treatment register was used to record treatment</td>
+      ```{r treatment_register, results='asis'}
+      query_treatment_register <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'DD protocols'	
+                                 AND attributes = 'Treatment register used'"
+                          
+      treatment_register_data <- dbGetQuery(con, query_treatment_register)
+      
+      if (nrow(treatment_register_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(treatment_register_data)) {
+    cat("<td>")
+    if (!is.na(treatment_register_data$value[i])) {
+      cat(scales::percent(treatment_register_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+ <tr>
+        <td>The teacher transferred the names from the class register to treatment register before the deworming exercise</td>
+      ```{r transferred_names, results='asis'}
+      query_transferred_names <- "SELECT * FROM dd_main
+                                 WHERE year = 2022
+                                 AND state = 'Rivers'
+                                 AND round = 'Overall'
+                                 AND variable = 'DD protocols'	
+                                 AND attributes = 'Trnsferred names prior'"
+                          
+      transferred_names_data <- dbGetQuery(con, query_transferred_names)
+      
+      if (nrow(transferred_names_data) == 0) {
+  cat("<td>N/A</td>")
+} else {
+  for (i in 1:nrow(transferred_names_data)) {
+    cat("<td>")
+    if (!is.na(transferred_names_data$value[i])) {
+      cat(scales::percent(transferred_names_data$value[i]))
+    } else {
+      cat("N/A")
+    }
+    cat("</td>")
+  }
+}
+```
+</tr>
+ </tbody>
+</table>
+
+##### <span style="color:#fe6e87;">Management of Side Effects</span>
+
+In the sample of schools where monitors observed and collected data on deworming day for each round, there were 3 cases of mild side effects reported – fever (1 - all in round two), headache (1 - all in round one), and vomiting (1 - all in round two). There were no SAE cases reported. 
+
+##### <span style="color:#fe6e87;">School Coverage of Eligible and Non-Enrolled Children</span>
+
+At 35 out of 60 (58%) monitored schools, every eligible child enrolled at the school was treated. At twenty-five schools at least one eligible child was not treated due to factors such as parental refusal (16), child’s refusal (12), fear of drugs (4), a sick child (4), a child’s absence from school (2) or a child who had already been dewormed (2). While 93% of head teachers indicated that they had made plans to deworm non-enrolled children on deworming day, only 12% of the observed schools dewormed non-enrolled children, which is a 2 percentage points increase from 2021. The main reason cited by head teachers for not planning to deworm non-enrolled children will not come for deworming (50%) - Figure 20.
+
+##### **Figure 20: Coverage of eligible and non-enrolled children on deworming day (n=60)**
+
+```{r figure 20, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(patchwork)
+library(stringr)
+
+# SQL query to get data
+sql_query <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Why were eligible children not dewormed today?'
+AND attributes NOT IN ('Other:Children absent from school', 'Other:Children that already taken deworming medicine')"
+
+data <- dbGetQuery(con, sql_query)
+
+# Mapping original variable names to desired names
+variable_mapping <- c('Other:Sick children' = 'Child sick',
+                      'Refusal by Children'='Refusal by Children',
+                      'Parent refused'='Parent refused',
+                      'Fear drugs'='Fear drugs')
+
+# Apply the mapping to the 'variable' column in data_lga
+data$variable_mapped <- variable_mapping[data$attributes]
+
+# Use reorder to arrange bars from smallest to highest
+data$variable_mapped <- reorder(data$variable_mapped, data$value)
+
+# SQL query to get data
+sql_query2 <- "SELECT * FROM dd_main
+WHERE year = 2022
+AND state = 'Rivers'
+AND round = 'Overall'
+AND variable = 'Were absentees noted for possible treatment when they return?'"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# Use reorder to arrange bars from smallest to highest
+data2$attributes <- reorder(data2$attributes, data2$value)
+
+sql_query3 <- "SELECT * FROM dd_main
+               WHERE year = 2022
+               AND state = 'Rivers'
+               AND round = 'Overall'
+               AND variable = 'Tabs and dosage protocol'
+               AND attributes = 'Coerced to swallow'"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# 'value' column contains the percentage obtained from the database
+value_from_db <- data3$value
+
+# Calculate the complementary value
+complementary_value <- 1 - value_from_db  
+
+# Create a data frame with both values and labels
+plot_data <- data.frame(
+  attributes = c("Yes", "No"),  # Assign labels "Yes" and "No"
+  value = c(value_from_db, complementary_value))
+
+# Plotting 1
+plot <- ggplot(data, aes(x = variable_mapped, y = value, fill = variable_mapped)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = variable_mapped), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="Why were eligible children not dewormed today?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank())
+
+# Plotting 2
+plot2 <- ggplot(data2, aes(x = attributes, y = value, fill = attributes)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(value), y = value, group = attributes), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title ="Were absentees noted for possible treatment when they return?", x = NULL, y = NULL) +
+     coord_flip() +
+     theme_minimal() +
+     theme(axis.text.x = element_blank()) 
+
+# Plotting 3
+plot3 <- ggplot(plot_data, aes(x = reorder(attributes, value), y = value, fill = attributes)) +
+  geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+  geom_text(aes(label = scales::percent(value), y = value), 
+            position = position_stack(vjust = 0.5), size = 3) + 
+  labs(title ="Were any children coerced to swallow the medicine against their wishes?", x = NULL, y = NULL) +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+print(plot/plot2/plot3)
+```
+
+# <span style="color:#fe6e87;">5.0 Coverage Validation Results</span>
+
+Coverage validation surveys were administered within six weeks of the MDA in two randomly selected LGAs – Emohua and Opobo/Nkoro. Coverage validation intended to achieve the following main objectives:
+
+1.	To validate the reported coverage numbers as reported by teachers and aggregated to the LGA level
+
+2.	To identify reasons for non-compliance
+
+## <span style="color:#fe6e87;">5.1 STH Results</span>
+
+##### **Table 9: Coverage Validation Survey Results**
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.custom-table td,
+.custom-table th {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+
+.custom-table .bold-row th {
+  font-weight: bold;
+}
+
+.custom-table .border-left th,
+.custom-table .border-left td {
+  border-left: 1px solid #000;
+}
+
+.custom-table .border-right th,
+.custom-table .border-right td {
+  border-right: 1px solid #000;
+}
+</style>
+
+<!-- Your Table -->
+<div class="custom-table">
+  <table>
+    <tr>
+      <th colspan="1">LGA</th>
+      <th colspan="3">Program Reach</th>
+      <th colspan="3">Surveyed Coverage</th>
+      <th colspan="1">Reported Coverage</th>
+      <th colspan="1">Denominator</th>
+    </tr>
+    <tr class="bold-row">
+      <td></td>
+      <td>Mean (%)</td>
+      <td>% Lower bound CI</td>
+      <td>% Upper bound CI</td>
+      <td>Mean (%)</td>
+      <td>% Lower bound CI</td>
+      <td>% Upper bound CI</td>
+      <td></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Emohua</td>
+      ```{r program_reach2, results='asis'}
+      query_program_reach <- "SELECT mean,lower_bound,upper_bound
+                              FROM program_reach
+                              WHERE LGA = 'Emohua'"
+                          
+      program_reach_data <- dbGetQuery(con, query_program_reach)
+      
+for (col_name in names(program_reach_data)) {
+    cat("<td>")
+    if (any(is.na(program_reach_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(program_reach_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      ```{r survey_coverage2, results='asis'}
+      query_survey_coverage <- "SELECT mean,lower_bound,upper_bound
+                              FROM survey_coverage
+                              WHERE LGA = 'Emohua'"
+                          
+      survey_coverage_data <- dbGetQuery(con, query_survey_coverage)
+      
+for (col_name in names(survey_coverage_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(survey_coverage_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      <td>86%</td>
+      ```{r survey_coverage_N2, results='asis'}
+      query_survey_coverage_N <- "SELECT alb_n
+                              FROM survey_coverage
+                              WHERE LGA = 'Emohua'"
+                          
+      survey_coverage_N_data <- dbGetQuery(con, query_survey_coverage_N)
+      
+for (col_name in names(survey_coverage_N_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_N_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat((survey_coverage_N_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+    </tr>
+    <tr>
+      <td>Opobo / Nkoro</td>
+      ```{r program_reach_o2, results='asis'}
+      query_program_reach_o <- "SELECT mean,lower_bound,upper_bound
+                              FROM program_reach
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      program_reach_o_data <- dbGetQuery(con, query_program_reach_o)
+      
+for (col_name in names(program_reach_o_data)) {
+    cat("<td>")
+    if (any(is.na(program_reach_o_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(program_reach_o_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      ```{r survey_coverage_o2, results='asis'}
+      query_survey_coverage_o <- "SELECT mean,lower_bound,upper_bound
+                              FROM survey_coverage
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      survey_coverage_o_data <- dbGetQuery(con, query_survey_coverage_o)
+      
+for (col_name in names(survey_coverage_o_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_o_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat(scales::percent(survey_coverage_o_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+      <td>86%</td>
+      ```{r survey_coverage_o_N2, results='asis'}
+      query_survey_coverage_o_N <- "SELECT alb_n
+                              FROM survey_coverage
+                              WHERE LGA = 'Opobo/Nkoro'"
+                          
+      survey_coverage_o_N_data <- dbGetQuery(con, query_survey_coverage_o_N)
+      
+for (col_name in names(survey_coverage_o_N_data)) {
+    cat("<td>")
+    if (any(is.na(survey_coverage_o_N_data[[col_name]]))) {
+      cat("N/A ")
+    } else {
+      cat((survey_coverage_o_N_data[[col_name]]), " ")
+    }
+    cat("</td>")
+  }
+```
+    </tr>
+  </table>
+</div>
+
+The findings indicate a program reach  of 84% in Emohua and 92% in Opobo/Nkoro (**Table 9**). The surveyed coverage (the proportion of interviewed individuals who swallowed the drug) was 83% in Emohua and 91% in Opobo/Nkoro. While CV was only conducted in two LGAs, and therefore not representative of the entire state, **surveyed coverage for the two LGAs was above the WHO’s recommended 75% therapeutic coverage threshold for STH**.
+
+When comparing the surveyed coverage to the reported coverage, **we found that reported coverage for Emohua LGA was within the 95% confidence interval of the surveyed coverage. This suggests that the reporting system is working well**.
+
+**The reported coverage for Opobo/Nkoro LGA on the other hand was outside the 95% confidence interval of the surveyed coverage. This suggests that the reporting system is not working well**.
+
+##### **Figure 21: Disaggregation by gender, enrollment status, and school type**
+
+```{r figure21, echo=FALSE}
+
+library(ggplot2)
+library(gridExtra)
+library(stringr)
+library(patchwork)
+library(tidyr)
+
+# sql query to get data 
+sql_query <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Male'"
+
+data <- dbGetQuery(con, sql_query)
+
+# sql query to get data 
+sql_query2 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Male'"
+
+data2 <- dbGetQuery(con, sql_query2)
+
+# sql query to get data 
+sql_query3 <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Female'"
+
+data3 <- dbGetQuery(con, sql_query3)
+
+# sql query to get data 
+sql_query4 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Female'"
+
+data4 <- dbGetQuery(con, sql_query4)
+
+# sql query to get data 
+sql_query5 <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Enrolled'"
+
+data5 <- dbGetQuery(con, sql_query5)
+
+# sql query to get data 
+sql_query6 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Enrolled'"
+
+data6 <- dbGetQuery(con, sql_query6)
+
+# sql query to get data 
+sql_query7 <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Nonenrolled'"
+
+data7 <- dbGetQuery(con, sql_query7)
+
+# sql query to get data 
+sql_query8 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Nonenrolled'"
+
+data8 <- dbGetQuery(con, sql_query8)
+
+# sql query to get data 
+sql_query9 <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Public'"
+
+data9 <- dbGetQuery(con, sql_query9)
+
+# sql query to get data 
+sql_query10 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Public'"
+
+data10 <- dbGetQuery(con, sql_query10)
+
+# sql query to get data 
+sql_query11 <- "SELECT mean
+              FROM program_reach
+              WHERE LGA = 'Overall_Private'"
+
+data11 <- dbGetQuery(con, sql_query11)
+
+# sql query to get data 
+sql_query12 <- "SELECT mean
+              FROM survey_coverage
+              WHERE LGA = 'Overall_Private'"
+
+data12 <- dbGetQuery(con, sql_query12)
+
+# Merge the data
+merged_data <- merge(data, data2, by = NULL)
+
+merged_data2 <- merge(data3, data4, by = NULL)
+
+merged_data3 <- merge(data5, data6, by = NULL)
+
+merged_data4 <- merge(data7, data8, by = NULL)
+
+merged_data5 <- merge(data9, data10, by = NULL)
+
+merged_data6 <- merge(data11, data12, by = NULL)
+
+# Reshape data
+merged_data_long <- pivot_longer(merged_data, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot1
+p1 <- ggplot(merged_data_long, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Male\n(n = 1,222)", y = NULL, fill = NULL) +  
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "none")  +
+  coord_cartesian(ylim = c(0, 1))
+
+# Reshape data
+merged_data_long2 <- pivot_longer(merged_data2, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot2
+p2 <- ggplot(merged_data_long2, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) + 
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Female\n(n = 1,150)", y = NULL, fill = NULL) +
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "none")  +
+  coord_cartesian(ylim = c(0, 1))
+
+# Reshape data
+merged_data_long3 <- pivot_longer(merged_data3, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot3
+p3 <- ggplot(merged_data_long3, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Enrolled\n(n = 2,288)", y = NULL, fill = NULL) +  
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "none") +
+  coord_cartesian(ylim = c(0, 1))
+
+# Reshape data
+merged_data_long4 <- pivot_longer(merged_data4, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot4
+p4 <- ggplot(merged_data_long4, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Non-enrolled\n(n = 84)", y = NULL, fill = NULL) +  
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "none") +
+          coord_cartesian(ylim = c(0, 1))
+
+# Reshape data
+merged_data_long5 <- pivot_longer(merged_data5, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot5
+p5 <- ggplot(merged_data_long5, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Public\n(n=1,908)", y = NULL, fill = NULL) +  
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "none") +
+          coord_cartesian(ylim = c(0, 1))
+
+# Reshape data
+merged_data_long6 <- pivot_longer(merged_data6, cols = c(mean.x, mean.y), names_to = "category", values_to = "mean_value")
+
+# plot6
+p6 <- ggplot(merged_data_long6, aes(x = category, y = mean_value, fill = category)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", width = 1) +  
+     geom_text(aes(label = paste0(round(mean_value*100), "%")), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  
+     scale_fill_manual(values = c("#fe6e87", "#c5c6c7", "#595959")) +
+     labs(x = "Private\n(n=380)", y = NULL, fill = NULL) +  
+     theme_minimal() +  
+     theme(axis.text.x = element_blank(), axis.text.y = element_blank(),  
+           legend.position = "right") +
+          coord_cartesian(ylim = c(0, 1))
+
+
+print(p1|p2|p3|p4|p5|p6)
+```
+
+A disaggregation by gender revealed a comparable (not more than one percentage point difference) program reach and surveyed coverage for one arm compared to the other, indicating that the program did not reach more of one gender. By enrollment status and school type, a much higher program reach and surveyed coverage was noted for the enrolled children and public schools. 
+
+## <span style="color:#fe6e87;">5.2 Reasons Drugs Were Not Provided and Non-compliance</span>
+
+Compliance rates (those who reported receiving the drug and swallowing it) were very high (99%). Unavailability of children in school (54%) was the main reason provided by those who did not receive the deworming medicine, distantly followed by the school not receiving deworming medicine (14%) – **Figure 22**.
+
+##### **Figure 22: Reasons the drug was not given (n=322)**
+
+```{r figure22, echo=FALSE}
+
+names <- c("School did not receive drugs","Already took at home","Lack of parent consent","Child refused","Child was ill","Child was taking other medications","Child was away from school","Don't know")
+values <- c(0.14,0.07,0.01,0.01,0.04,0.03,0.54,0.16)
+X <- data.frame(names,values)
+
+library(ggplot2)
+
+plot <- ggplot(X, aes(x = reorder(names, values), y = values)) +
+     geom_bar(stat = "identity", position = "identity", color = "white", fill = "#fe6e87") +
+     geom_text(aes(label = scales::percent(values), y = values, group = names), 
+               position = position_stack(vjust = 0.5), size = 3) +
+     labs(title = NULL, x = NULL, y = NULL) +
+     coord_flip() +
+     scale_y_continuous(limits = c(0, 0.6), 
+                        breaks = seq(0, 0.6, by = 0.1),
+                        labels = NULL) + 
+     theme(axis.line.y = element_blank(), 
+           axis.text.x = element_blank(),
+           axis.text.y = element_blank(),      
+           axis.title.y = element_blank(),    
+           axis.ticks.y = element_blank(),     
+           panel.grid.major = element_blank(), 
+           panel.grid.minor = element_blank()) +
+     theme_minimal()
+
+print(plot)
+```
+
+
+## <span style="color:#fe6e87;">5.3 Unprogrammed Deworming</span>
+
+Aside from the present deworming, monitors also sought to determine if respondents had received any deworming medicine within the last six months of deworming day. The findings indicate that 21% of respondents (compared to 17% in Year 5) had received the tablet prior to deworming day in the last six months. Among the 507 children that received a deworming tablet within 6 months of deworming day, 95% indicated that the drug was taken from their homes, 3% took the deworming medicine from a pharmacy and 2% took it from a health facility. This low self-reported proportion further underlines the importance of having the MDA.
+
+# <span style="color:#fe6e87;">6.0 Priorities and Way Forward</span>
+
+<!-- Table Styles -->
+<style>
+.custom-table {
+  border-collapse: collapse;
+}
+
+.custom-table th,
+.custom-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-table th {
+  background-color: #fe6e87;
+}
+</style>
+
+<!-- Table -->
+<table class="custom-table">
+  <thead>
+    <tr>
+      <th>Priorities</th>
+      <th>Results</th>
+      <th>Way Forward</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Training</td>
+<td>**Successes:**
+
+●	There was a 20 percentage point increase in teacher training attendance from 56% in year 5.
+
+●	There was a 12 percentage point increase in school attendance from 52% in year 5.
+
+●	At least 94% of all training centers covered all the expected training topics.
+
+●	The coverage of steps to be taken in cases of SAEs at teacher training increased (from 86% in year 5 to 94%).
+
+●	Most of the messages on all steps of drug administration were covered in at least 86% of LGA and 77% of teacher training sessions.
+
+●	At the LGA training, messages on handwashing before treatment was the least covered at 86%.
+
+●	At the teacher training, messages on checking the child’s mouth to ensure  that each child chews and swallows the tablet were least covered at 77%.
+
+**Challenges:**
+
+●	While there was an increase in school attendance, 36% of the expected schools didn’t have a representative in the teacher training.
+
+●	While a majority of the topics were covered, there is still a need to ensure community sensitization is covered in all trainings, as this year it was covered in only 94% of the teacher trainings observed.</td>
+<td>
+●	The program works with the government and schools to reiterate the importance of the trainings to increase the attendance rate for the teacher trainings.
+
+●	To emphasize to Master Trainers the importance of fully covering all topics in teacher trainings.
+
+●	To reinforce that all topics in the training booklets should be covered in all training sessions. Additionally, the program team will liaise the Ministry of Education to ensure that deworming training remains a priority, and the assignment of teachers does not clash with other ongoing programs.
+
+●	Information about training dates, venue and expected participants should reach out to all schools in good time
+
+</tr>
+<tr>
+<td>Community Sensitization</td>
+<td>
+**Successes:**
+
+●	All (100%) teacher training attendees reported the correct date of deworming post training. 
+
+●	Children (74%) and teachers (40%) were the most cited sources of information for parents, with town announcer (49%), radio (45%) and teachers (42%) as the most preferred sources of information.
+
+**Challenges:**
+
+●	Overall, 73% of parents interviewed were aware of deworming day; including 86% of parents of enrolled children, and 43% of parents of non-enrolled children, which is a decrease from the previous year (82% of parents were aware - 92% of enrolled and 58% of non-enrolled).
+
+●	Sixty-eight percent (68%) of monitored schools were utilizing at least one awareness activity or material, which dropped from year 5 rate of 77%.
+
+●	During community interviews with parents on deworming day, 21% of parents (20% of enrolled and 24% of parents of non-enrolled) indicated that they had concerns or questions about the deworming activity. The concerns included sensitization on worm infection and prevention (11%), the safety of the deworming medicine (8%), involving parents in the program’s training (6%), deworming to be done at households and hospitals (6%), the program’s continuation (6%), and creating awareness early (3%); questions included why adults are not being dewormed (39%), how long the program will last (6%), who is providing the deworming medicine - the government or the health facility (6%), whether the deworming medicine is provided for free (6%), whether deworming is only done in schools (3%) and why non-enrolled children are not getting deworming messages (3%).
+
+●	Parents had little knowledge of the target age group and worms (both at 48%).
+
+●	The main reasons cited by parents for not sending children for deworming was lack of awareness (55%).
+
+</td>
+<td>
+●	To have focused/targeted messages to the parents of enrolled and non-enrolled SAC to ensure parents are aware of deworming day, the benefits of deworming, type of worms, target age-group and to reduce concerns and questions around deworming as a whole. The program team should also emphasize the importance of schools displaying posters in clearly visible locations.
+
+●	Sustain the use of all stakeholders, especially the community structures, when sensitizing communities.
+
+●	Explore possible approaches for integrating community sensitization into other health programs (i.e. immunization, malaria control, etc) to reduce costs and engage a wider audience.
+
+</td>
+</tr>
+
+<tr>
+<td>Deworming Week</td>
+<td>
+**Successes:**
+
+●	In 2022, the supply chain for key materials was moderate:
+
+ -All (100%) schools had received mebendazole before deworming day.
+      
+ -Seventy-five percent (75%) of schools had received reporting forms before deworming day, and 75% of schools had both drugs and reporting forms on deworming day.
+      
+●	On deworming day, all (100%) members of the deworming team (teachers) knew the correct dosage, and that the drug for STH treatment was mebendazole.
+
+●	Seventy percent (70%) of teachers shared health messages with children before deworming.
+
+●	During deworming, 92% of teachers recorded treatment in the treatment register.
+
+●	There were no reports of SAE in schools
+
+**Challenges:**
+
+●	Only 12% of the observed schools dewormed non-enrolled children. The main reason cited by head teachers for not planning to deworm non-enrolled children is that they will not accept going for deworming.
+
+●	The schools that were monitored struggled to deworm the children on the designated date, as 47 out of 54 conducted deworming on the designated day, for a rate of 87%. 
+
+●	Teachers were unable to enforce hand-washing prior to treatment (37%), which was the same as the previous year.
+
+●	Twenty-five of the 60 schools (42%) monitored had at least one eligible child who was not treated due to factors such as parental refusal (11), child refusal (4), a sick child (3), drugs were finished (2), child has not eaten (2), fear of drugs (1), child has already taken deworming medicine (1), or all eligible children were dewormed (1). 
+
+</td>
+<td>
+●	To work with the schools to ensure they are ready to treat on the planned day to ensure the highest possibility of attendance by the children. 
+
+●	To continue to work with the government and community leaders are increasing the percentage of non-enrolled children who are treated. One action we could take is following up with parents of no-enrolled children to confirm whether they are receiving the relevant announcements about deworming days.
+
+●	To ensure that protocols, such as the importance of hand-washing by children prior to treatment, are reviewed in training and followed on deworming day.
+
+●	Plan ahead of time and provide adequate logistics to support health teams to be able to deworm non enrolled SAC in the hard to reach areas ●	To work with the schools to ensure they are ready to treat on the planned day to ensure the highest possibility of attendance by the children. 
+
+●	To continue to work with the government and community leaders are increasing the percentage of non-enrolled children who are treated. One action we could take is following up with parents of no-enrolled children to confirm whether they are receiving the relevant announcements about deworming days.
+
+●	To ensure that protocols, such as the importance of hand-washing by children prior to treatment, are reviewed in training and followed on deworming day.
+
+●	Plan ahead of time and provide adequate logistics to support health teams to be able to deworm non enrolled SAC in the hard to reach areas
+
+</td>
+<tr>
+<td>Coverage Validation</td>
+<td>
+**Successes:**
+
+●	Based on CV, the overall surveyed coverage for SAC in Emohua and Opobo/Nkoro LGAs achieved the WHO’s recommended 75% therapeutic coverage threshold for STH treatment. Additionally, the coverage validation results from Emohua LGA suggest that the treatment reporting system is working well.
+
+●	Compliance rates (those who reported receiving the drug and swallowing it) were very high at 99%.
+
+**Challenges:**
+
+●	The reported coverage for Opobo/Nkoro LGA on the other hand was outside the 95% confidence interval of the surveyed coverage. This suggests that the reporting system is not working well.
+
+</td>
+<td>
+●	The program team should investigate reporting challenges and work with the government to address these concerns and identify areas for improvement with treatment data and reporting in Opodo/Nkoro LGA.
+</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
