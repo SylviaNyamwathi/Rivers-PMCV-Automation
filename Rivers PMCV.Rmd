@@ -16,8 +16,6 @@ runtime: shiny
 <span style="background-color:#fe6e87; color:white; display: inline-block; text-align: center; width: 100%;">*May and November, 2022*</span>
 
 
-**Prepared by:** 	Evidence Action
-
 **For:**                    	GiveWell and partners, Nigerian Ministries of Health and Education
 
 
@@ -48,13 +46,6 @@ library(tinytex)
 library(RPostgreSQL)
 library(shiny)
 library(shinyjs)
-
-# Database connection details
-db_user <- "sylviagitau"
-db_password <- "5y1Vi4.8|7@u"
-db_host <- "pilot.cnltbg2tkrfl.eu-central-1.rds.amazonaws.com"
-db_port <- 5432
-db_name <- "nigeria_pmcv"
 
 # Establish a database connection
 con <- dbConnect(
